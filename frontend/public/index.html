@@ -411,6 +411,15 @@
         <input type="text" id="f-from-number" placeholder="+549..." />
       </div>
 
+      <div class="field">
+        <label for="f-country-code">Códigos de país a probar</label>
+        <input type="text" id="f-country-code" placeholder="ej: +1, +52, +58" />
+        <div class="field-set-status" style="margin-top:5px;">
+          TaxiCaller manda el teléfono sin código de país. Podés poner varios separados
+          por coma — la función los prueba en orden hasta que uno funcione.
+        </div>
+      </div>
+
       <div class="group-title">Credenciales</div>
 
       <div class="field">
@@ -578,6 +587,7 @@ async function loadSettingsStatus(){
   document.getElementById('f-server-url').value = s.server_url ?? '';
   document.getElementById('f-extension-id').value = s.extension_id ?? '';
   document.getElementById('f-from-number').value = s.from_number ?? '';
+  document.getElementById('f-country-code').value = s.phone_country_code ?? '';
   document.getElementById('status-client-id').textContent = s.client_id_set ? `Configurado (${s.client_id_hint})` : 'No configurado';
   document.getElementById('status-client-secret').textContent = s.client_secret_set ? 'Configurado' : 'No configurado';
   document.getElementById('status-jwt').textContent = s.jwt_credential_set ? 'Configurado' : 'No configurado';
@@ -590,6 +600,7 @@ document.getElementById('settings-form').addEventListener('submit', async (e) =>
     p_server_url: document.getElementById('f-server-url').value.trim(),
     p_extension_id: document.getElementById('f-extension-id').value.trim(),
     p_from_number: document.getElementById('f-from-number').value.trim(),
+    p_phone_country_code: document.getElementById('f-country-code').value.trim(),
     p_client_id: document.getElementById('f-client-id').value.trim(),
     p_client_secret: document.getElementById('f-client-secret').value.trim(),
     p_jwt_credential: document.getElementById('f-jwt').value.trim(),

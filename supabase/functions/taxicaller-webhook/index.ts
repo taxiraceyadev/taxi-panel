@@ -27,48 +27,61 @@ const supabase = createClient(supabaseUrl, serviceRoleKey);
 // ------------------------------------------------------------
 // 1) MAPEO DEL PAYLOAD DE TAXICALLER
 //
-// TaxiCaller no publica un esquema fijo para este webhook, así
-// que esta función guarda el payload crudo en los logs de la
-// función (Supabase Dashboard -> Edge Functions -> Logs) la
-// primera vez que llegue algo. Ajustá las rutas de abajo una vez
-// que veas la forma real del JSON que te manda tu cuenta.
+// Confirmado con un webhook real, el payload de esta cuenta viene así:
+//   {"event":"waiting_for_passenger","job_id":"327474472",
+//    "vehicle_make":"R142 Kia Spectra 2008","vehicle_color":"Azul / Blue",
+//    "vehicle_plate":"ABM6PI","passenger_phone":"404963673"}
+//
+// No manda un ID de vehículo aparte, así que usamos la PLACA como
+// identificador único de la unidad para la deduplicación.
+//
+// TODO: todavía no sabemos qué valor manda TaxiCaller en "event" cuando
+// la unidad DEJA de estar en espera (se completa el viaje, por ejemplo).
+// Cuando tengas ese caso real, mandámelo y ajustamos isCleared.
 // ------------------------------------------------------------
 function parseTaxiCallerPayload(body: any) {
-  // TODO: ajustar estas rutas según el payload real.
-  // Dejo varias alternativas comentadas a modo de guía.
-  const vehicleId =
-    body?.vehicle?.id ?? body?.meta?.resource_id ?? body?.vehicle_id ?? null;
+  const plate = body?.vehicle_plate ?? body?.vehicle?.plate ?? "Sin placa";
 
-  const vehicleLabel =
-    body?.vehicle?.callsign ??
-    body?.vehicle?.label ??
-    body?.vehicle?.name ??
-    body?.vehicle_label ??
-    "Unidad sin nombre";
+  // Usamos la placa como identificador único de la unidad (no hay otro id).
+  const vehicleId = plate !== "Sin placa" ? plate : null;
 
-  const plate =
-    body?.vehicle?.plate ??
-    body?.vehicle?.license_plate ??
-    body?.plate ??
-    "Sin placa";
+  const vehicleLabel = body?.vehicle_make ?? body?.vehicle?.label ?? "Unidad sin nombre";
 
-  const phone =
-    body?.job?.passenger?.phone ??
-    body?.passenger?.phone ??
-    body?.customer_phone ??
-    body?.phone ??
-    null;
+  const phoneRaw =
+    body?.passenger_phone ?? body?.job?.passenger?.phone ?? body?.phone ?? null;
 
-  // Estado del evento: distinguí "se puso en espera" de "se liberó",
-  // para no reenviar el SMS cada vez que llega el mismo estado.
-  const rawStatus =
-    body?.event_type ?? body?.status ?? body?.vehicle?.status ?? "";
-  const isOnHold = /hold|wait|espera/i.test(String(rawStatus));
-  const isCleared = /clear|active|available|libre/i.test(String(rawStatus));
+  const rawStatus = body?.event ?? body?.event_type ?? body?.status ?? "";
+  const isOnHold = /waiting_for_passenger|hold|wait|espera/i.test(String(rawStatus));
+  const isCleared = /clear|active|available|libre|completed|cancelled/i.test(
+    String(rawStatus),
+  );
 
-  const eventId = body?.event_id ?? body?.id ?? crypto.randomUUID();
+  const eventId = body?.job_id ?? body?.event_id ?? body?.id ?? crypto.randomUUID();
 
-  return { vehicleId, vehicleLabel, plate, phone, isOnHold, isCleared, eventId };
+  return {
+    vehicleId,
+    vehicleLabel,
+    plate,
+    phoneRaw,
+    isOnHold,
+    isCleared,
+    eventId,
+  };
+}
+
+// ------------------------------------------------------------
+// Normaliza el teléfono a formato internacional (E.164), que es
+// lo que exige RingCentral. TaxiCaller lo manda sin código de país
+// (ej: "404963673"), así que le anteponemos el que hayas configurado
+// en la tuerquita del panel (campo "Código de país").
+// ------------------------------------------------------------
+function normalizePhone(phoneRaw: string | null, countryCode: string | null) {
+  if (!phoneRaw) return null;
+  const digitsOnly = phoneRaw.replace(/[^\d+]/g, "");
+  if (digitsOnly.startsWith("+")) return digitsOnly; // ya viene completo
+  const prefix = (countryCode ?? "").replace(/[^\d+]/g, "");
+  if (!prefix) return null; // no hay forma de completarlo, hay que configurar el prefijo
+  return `${prefix}${digitsOnly.replace(/^0+/, "")}`;
 }
 
 // ------------------------------------------------------------
@@ -152,7 +165,7 @@ Deno.serve(async (req) => {
 
   console.log("Payload crudo de TaxiCaller:", JSON.stringify(rawBody));
 
-  const { vehicleId, vehicleLabel, plate, phone, isOnHold, isCleared, eventId } =
+  const { vehicleId, vehicleLabel, plate, phoneRaw, isOnHold, isCleared, eventId } =
     parseTaxiCallerPayload(rawBody);
 
   // Si el evento es "se liberó", solo actualizamos el estado y salimos.
@@ -173,7 +186,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  if (!phone) {
+  if (!phoneRaw) {
     console.log("Webhook sin teléfono de cliente, no se puede notificar.");
     return new Response(
       JSON.stringify({ ok: false, reason: "sin teléfono en el payload" }),
@@ -223,13 +236,32 @@ Deno.serve(async (req) => {
     await supabase.from("messages_log").insert({
       vehicle_label: vehicleLabel,
       plate,
-      phone,
+      phone: phoneRaw,
       status: "failed",
       error_detail: "Configuración de RingCentral incompleta (revisar panel)",
       taxicaller_event_id: eventId,
     });
     return new Response(
       JSON.stringify({ ok: false, reason: "settings incompletos" }),
+      { status: 200 },
+    );
+  }
+
+  const phone = normalizePhone(phoneRaw, settings.phone_country_code);
+
+  if (!phone) {
+    await supabase.from("messages_log").insert({
+      vehicle_label: vehicleLabel,
+      plate,
+      phone: phoneRaw,
+      status: "failed",
+      error_detail:
+        `El teléfono "${phoneRaw}" no tiene código de país y falta configurar ` +
+        `el campo "Código de país" en la tuerquita del panel (ej: +54).`,
+      taxicaller_event_id: eventId,
+    });
+    return new Response(
+      JSON.stringify({ ok: false, reason: "falta configurar código de país" }),
       { status: 200 },
     );
   }
