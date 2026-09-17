@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Panel de notificaciones</title>
+<link rel="icon" href="data:," />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14171C;
+    --surface:#1C2028;
+    --surface-raised:#242A34;
+    --surface-hover:#2B323E;
+    --border:#323945;
+    --accent:#F2A93B;
+    --accent-dim:#7A5A22;
+    --ok:#37B893;
+    --bad:#E8555F;
+    --text:#F3F4F6;
+    --text-muted:#8B92A0;
+    --text-faint:#5B6270;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink);
+    color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{ font-family:'IBM Plex Mono',ui-monospace,monospace; }
+
+  /* ---------- Login ---------- */
+  #login-view{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .login-card{
+    width:100%;
+    max-width:360px;
+    padding:36px 32px;
+  }
+  .brand-mark{
+    width:34px;height:34px;border-radius:9px;
+    background:var(--accent);
+    display:flex;align-items:center;justify-content:center;
+    margin-bottom:20px;
+    box-shadow:0 0 24px -4px rgba(242,169,59,.55);
+  }
+  .brand-mark svg{width:18px;height:18px;}
+  .login-card h1{
+    font-size:20px;
+    font-weight:600;
+    margin:0 0 6px;
+    letter-spacing:-0.01em;
+  }
+  .login-card p{
+    color:var(--text-muted);
+    font-size:14px;
+    margin:0 0 28px;
+    line-height:1.5;
+  }
+  label{
+    display:block;
+    font-size:13px;
+    color:var(--text-muted);
+    margin-bottom:6px;
+  }
+  .field{ margin-bottom:16px; }
+  input[type=email],input[type=password],input[type=text]{
+    width:100%;
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:10px 12px;
+    border-radius:8px;
+    font-size:14px;
+    font-family:inherit;
+    outline:none;
+    transition:border-color .15s ease;
+  }
+  input:focus{ border-color:var(--accent); }
+  .btn{
+    appearance:none;
+    border:none;
+    border-radius:8px;
+    padding:10px 16px;
+    font-size:14px;
+    font-weight:600;
+    font-family:inherit;
+    cursor:pointer;
+    transition:filter .15s ease, background .15s ease;
+  }
+  .btn:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .btn-primary{ background:var(--accent); color:#241705; width:100%; }
+  .btn-primary:hover{ filter:brightness(1.08); }
+  .btn-ghost{ background:transparent; color:var(--text-muted); border:1px solid var(--border); }
+  .btn-ghost:hover{ color:var(--text); border-color:var(--text-faint); }
+  .error-msg{
+    color:var(--bad);
+    font-size:13px;
+    margin-top:14px;
+    min-height:16px;
+  }
+
+  /* ---------- App shell ---------- */
+  #app-view{ display:none; min-height:100vh; }
+  header.topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:18px 28px;
+    border-bottom:1px solid var(--border);
+  }
+  .topbar-left{ display:flex; align-items:center; gap:12px; }
+  .pulse{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--ok);
+    box-shadow:0 0 0 0 rgba(55,184,147,.6);
+    animation:pulse 2.2s infinite;
+  }
+  @keyframes pulse{
+    0%{ box-shadow:0 0 0 0 rgba(55,184,147,.55); }
+    70%{ box-shadow:0 0 0 7px rgba(55,184,147,0); }
+    100%{ box-shadow:0 0 0 0 rgba(55,184,147,0); }
+  }
+  .topbar-title{ font-size:15px; font-weight:600; }
+  .topbar-sub{ font-size:12.5px; color:var(--text-muted); }
+  .icon-btn{
+    width:36px;height:36px;
+    border-radius:8px;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text-muted);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  .icon-btn:hover{ color:var(--text); border-color:var(--text-faint); background:var(--surface-hover); }
+
+  main{ max-width:1040px; margin:0 auto; padding:28px; }
+
+  .stats-row{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:1px;
+    background:var(--border);
+    border:1px solid var(--border);
+    border-radius:10px;
+    overflow:hidden;
+    margin-bottom:28px;
+  }
+  .stat{
+    background:var(--surface);
+    padding:18px 20px;
+  }
+  .stat .n{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:26px;
+    font-weight:600;
+    line-height:1;
+  }
+  .stat .l{
+    font-size:12.5px;
+    color:var(--text-muted);
+    margin-top:8px;
+  }
+  .stat.ok .n{ color:var(--ok); }
+  .stat.bad .n{ color:var(--bad); }
+
+  .feed-head{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom:12px;
+  }
+  .feed-head h2{ font-size:15px; font-weight:600; margin:0; }
+  .feed-head span{ font-size:12.5px; color:var(--text-muted); }
+
+  .feed{
+    border:1px solid var(--border);
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .row{
+    display:grid;
+    grid-template-columns:88px 1fr 1fr 1.3fr 120px;
+    gap:12px;
+    align-items:center;
+    padding:13px 18px;
+    border-bottom:1px solid var(--border);
+    font-size:13.5px;
+  }
+  .row:last-child{ border-bottom:none; }
+  .row.head{
+    background:var(--surface);
+    color:var(--text-muted);
+    font-size:12px;
+    padding:10px 18px;
+  }
+  .row.data:hover{ background:var(--surface); }
+  .cell-time{ color:var(--text-muted); }
+  .cell-plate{ color:var(--text); }
+  .badge{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:12.5px;
+    font-weight:500;
+    padding:4px 9px;
+    border-radius:6px;
+    width:fit-content;
+  }
+  .badge.sent{ background:rgba(55,184,147,.12); color:var(--ok); }
+  .badge.failed{ background:rgba(232,85,95,.12); color:var(--bad); }
+  .badge svg{ width:12px;height:12px; }
+
+  .empty{
+    padding:52px 20px;
+    text-align:center;
+    color:var(--text-muted);
+    font-size:13.5px;
+  }
+
+  /* ---------- Settings drawer ---------- */
+  .scrim{
+    position:fixed; inset:0;
+    background:rgba(10,12,15,.55);
+    opacity:0; pointer-events:none;
+    transition:opacity .18s ease;
+    z-index:20;
+  }
+  .scrim.open{ opacity:1; pointer-events:auto; }
+  .drawer{
+    position:fixed; top:0; right:0; bottom:0;
+    width:100%; max-width:420px;
+    background:var(--surface);
+    border-left:1px solid var(--border);
+    transform:translateX(100%);
+    transition:transform .2s ease;
+    z-index:21;
+    overflow-y:auto;
+  }
+  .drawer.open{ transform:translateX(0); }
+  .drawer-inner{ padding:26px 26px 40px; }
+  .drawer-head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:4px;
+  }
+  .drawer-head h2{ font-size:16px; font-weight:600; margin:0; }
+  .drawer p.hint{
+    font-size:13px; color:var(--text-muted); line-height:1.5;
+    margin:6px 0 26px;
+  }
+  .group-title{
+    font-size:11.5px;
+    color:var(--text-faint);
+    margin:26px 0 12px;
+    font-weight:600;
+  }
+  .field-set-status{
+    font-size:12px;
+    color:var(--text-faint);
+    margin-top:5px;
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(12px);
+    background:var(--surface-raised);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:10px 16px;
+    border-radius:8px;
+    font-size:13.5px;
+    opacity:0; pointer-events:none;
+    transition:all .2s ease;
+    z-index:30;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  @media (max-width:640px){
+    .row{ grid-template-columns:1fr 1fr; row-gap:4px; }
+    .row.head{ display:none; }
+    .cell-time{ order:5; font-size:12px; }
+    main{ padding:18px; }
+    .stats-row{ grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<div id="login-view">
+  <div class="login-card">
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 17h16M6 17l1.2-5.5A2 2 0 0 1 9.15 10h5.7a2 2 0 0 1 1.95 1.5L18 17M8 17v2M16 17v2" stroke="#241705" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </div>
+    <h1>Panel de notificaciones</h1>
+    <p>Iniciá sesión para ver el estado de los envíos y configurar la conexión con RingCentral.</p>
+    <form id="login-form">
+      <div class="field">
+        <label for="login-email">Correo</label>
+        <input type="email" id="login-email" autocomplete="username" required />
+      </div>
+      <div class="field">
+        <label for="login-pass">Contraseña</label>
+        <input type="password" id="login-pass" autocomplete="current-password" required />
+      </div>
+      <button type="submit" class="btn btn-primary">Entrar</button>
+      <div class="error-msg" id="login-error"></div>
+    </form>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app-view">
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="pulse"></span>
+      <div>
+        <div class="topbar-title">Panel de notificaciones</div>
+        <div class="topbar-sub">Unidades en espera → SMS al cliente</div>
+      </div>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button class="icon-btn" id="btn-settings" title="Configuración">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="btn-logout" title="Cerrar sesión">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <div class="stats-row">
+      <div class="stat">
+        <div class="n mono" id="stat-onhold">–</div>
+        <div class="l">Unidades en espera ahora</div>
+      </div>
+      <div class="stat ok">
+        <div class="n mono" id="stat-sent">–</div>
+        <div class="l">Enviados hoy</div>
+      </div>
+      <div class="stat bad">
+        <div class="n mono" id="stat-failed">–</div>
+        <div class="l">Fallidos hoy</div>
+      </div>
+    </div>
+
+    <div class="feed-head">
+      <h2>Actividad reciente</h2>
+      <span id="feed-count"></span>
+    </div>
+    <div class="feed">
+      <div class="row head">
+        <div>Hora</div>
+        <div>Unidad</div>
+        <div>Placa</div>
+        <div>Teléfono</div>
+        <div>Estado</div>
+      </div>
+      <div id="feed-body"></div>
+    </div>
+  </main>
+</div>
+
+<!-- ================= SETTINGS DRAWER ================= -->
+<div class="scrim" id="scrim"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-inner">
+    <div class="drawer-head">
+      <h2>Configuración</h2>
+      <button class="icon-btn" id="btn-close-drawer">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p class="hint">
+      Estos datos los usa la función que recibe el webhook de TaxiCaller para autenticarse
+      contra RingCentral y enviar el SMS. Los campos sensibles no se vuelven a mostrar:
+      solo se pueden sobrescribir.
+    </p>
+
+    <form id="settings-form">
+      <div class="group-title">Conexión</div>
+
+      <div class="field">
+        <label for="f-server-url">Server URL</label>
+        <input type="text" id="f-server-url" placeholder="https://platform.ringcentral.com" />
+      </div>
+
+      <div class="field">
+        <label for="f-extension-id">Extension ID <span style="color:var(--text-faint)">(opcional)</span></label>
+        <input type="text" id="f-extension-id" placeholder="Dejar vacío para usar la extensión propia" />
+      </div>
+
+      <div class="field">
+        <label for="f-from-number">Número que envía los SMS</label>
+        <input type="text" id="f-from-number" placeholder="+549..." />
+      </div>
+
+      <div class="group-title">Credenciales</div>
+
+      <div class="field">
+        <label for="f-client-id">Client ID</label>
+        <input type="text" id="f-client-id" placeholder="Nuevo valor" />
+        <div class="field-set-status" id="status-client-id"></div>
+      </div>
+
+      <div class="field">
+        <label for="f-client-secret">Client Secret</label>
+        <input type="password" id="f-client-secret" placeholder="Nuevo valor" />
+        <div class="field-set-status" id="status-client-secret"></div>
+      </div>
+
+      <div class="field">
+        <label for="f-jwt">JWT Credential</label>
+        <input type="password" id="f-jwt" placeholder="Nuevo valor" />
+        <div class="field-set-status" id="status-jwt"></div>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:24px;">
+        <button type="submit" class="btn btn-primary">Guardar cambios</button>
+        <button type="button" class="btn btn-ghost" id="btn-cancel-drawer">Cancelar</button>
+      </div>
+    </form>
+
+    <div class="field-set-status" id="settings-updated" style="margin-top:20px;"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const loginView = document.getElementById('login-view');
+const appView = document.getElementById('app-view');
+const loginForm = document.getElementById('login-form');
+const loginError = document.getElementById('login-error');
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+function fmtPhone(p){
+  if(!p) return '—';
+  // Muestra los últimos 4 dígitos visibles, el resto enmascarado.
+  const clean = p.replace(/\s+/g,'');
+  if(clean.length <= 4) return clean;
+  return clean.slice(0,-4).replace(/\d/g,'•') + clean.slice(-4);
+}
+
+function fmtTime(iso){
+  const d = new Date(iso);
+  return d.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' });
+}
+
+function badge(status){
+  if(status === 'sent'){
+    return `<span class="badge sent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>Enviado</span>`;
+  }
+  return `<span class="badge failed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 6 6 18M6 6l12 12"/></svg>Error</span>`;
+}
+
+function renderRows(rows){
+  const body = document.getElementById('feed-body');
+  const count = document.getElementById('feed-count');
+  count.textContent = rows.length ? `${rows.length} registros` : '';
+  if(!rows.length){
+    body.innerHTML = `<div class="empty">Todavía no se registraron envíos. En cuanto TaxiCaller mande el primer webhook, va a aparecer acá.</div>`;
+    return;
+  }
+  body.innerHTML = rows.map(r => `
+    <div class="row data">
+      <div class="cell-time mono">${fmtTime(r.sent_at)}</div>
+      <div>${r.vehicle_label ?? '—'}</div>
+      <div class="cell-plate mono">${r.plate ?? '—'}</div>
+      <div class="mono">${fmtPhone(r.phone)}</div>
+      <div>${badge(r.status)}</div>
+    </div>
+  `).join('');
+}
+
+function updateStats(rows, onHoldCount){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todays = rows.filter(r => new Date(r.sent_at) >= today);
+  document.getElementById('stat-onhold').textContent = onHoldCount;
+  document.getElementById('stat-sent').textContent = todays.filter(r=>r.status==='sent').length;
+  document.getElementById('stat-failed').textContent = todays.filter(r=>r.status==='failed').length;
+}
+
+async function loadFeed(){
+  const { data: rows, error } = await supabase
+    .from('messages_log')
+    .select('*')
+    .order('sent_at', { ascending:false })
+    .limit(100);
+
+  const { count: onHoldCount } = await supabase
+    .from('vehicles_on_hold')
+    .select('*', { count:'exact', head:true })
+    .eq('status','on_hold');
+
+  if(error){ console.error(error); return; }
+  renderRows(rows);
+  updateStats(rows, onHoldCount ?? 0);
+}
+
+function subscribeRealtime(){
+  supabase.channel('messages_log_changes')
+    .on('postgres_changes', { event:'*', schema:'public', table:'messages_log' }, loadFeed)
+    .on('postgres_changes', { event:'*', schema:'public', table:'vehicles_on_hold' }, loadFeed)
+    .subscribe();
+}
+
+// ---------------- Auth ----------------
+async function enterApp(){
+  loginView.style.display = 'none';
+  appView.style.display = 'block';
+  await loadFeed();
+  await loadSettingsStatus();
+  subscribeRealtime();
+}
+
+loginForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  loginError.textContent = '';
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-pass').value;
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if(error){
+    loginError.textContent = 'No se pudo iniciar sesión. Revisá el correo y la contraseña.';
+    return;
+  }
+  enterApp();
+});
+
+document.getElementById('btn-logout').addEventListener('click', async () => {
+  await supabase.auth.signOut();
+  location.reload();
+});
+
+// ---------------- Settings drawer ----------------
+const drawer = document.getElementById('drawer');
+const scrim = document.getElementById('scrim');
+
+function openDrawer(){ drawer.classList.add('open'); scrim.classList.add('open'); }
+function closeDrawer(){ drawer.classList.remove('open'); scrim.classList.remove('open'); }
+
+document.getElementById('btn-settings').addEventListener('click', openDrawer);
+document.getElementById('btn-close-drawer').addEventListener('click', closeDrawer);
+document.getElementById('btn-cancel-drawer').addEventListener('click', closeDrawer);
+scrim.addEventListener('click', closeDrawer);
+
+async function loadSettingsStatus(){
+  const { data, error } = await supabase.rpc('admin_get_settings_status');
+  if(error || !data?.length) return;
+  const s = data[0];
+  document.getElementById('f-server-url').value = s.server_url ?? '';
+  document.getElementById('f-extension-id').value = s.extension_id ?? '';
+  document.getElementById('f-from-number').value = s.from_number ?? '';
+  document.getElementById('status-client-id').textContent = s.client_id_set ? `Configurado (${s.client_id_hint})` : 'No configurado';
+  document.getElementById('status-client-secret').textContent = s.client_secret_set ? 'Configurado' : 'No configurado';
+  document.getElementById('status-jwt').textContent = s.jwt_credential_set ? 'Configurado' : 'No configurado';
+  document.getElementById('settings-updated').textContent = s.updated_at ? `Última actualización: ${new Date(s.updated_at).toLocaleString('es-AR')}` : '';
+}
+
+document.getElementById('settings-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = {
+    p_server_url: document.getElementById('f-server-url').value.trim(),
+    p_extension_id: document.getElementById('f-extension-id').value.trim(),
+    p_from_number: document.getElementById('f-from-number').value.trim(),
+    p_client_id: document.getElementById('f-client-id').value.trim(),
+    p_client_secret: document.getElementById('f-client-secret').value.trim(),
+    p_jwt_credential: document.getElementById('f-jwt').value.trim(),
+  };
+  const { error } = await supabase.rpc('admin_update_settings', payload);
+  if(error){
+    showToast('No se pudo guardar la configuración.');
+    return;
+  }
+  // limpiar los campos sensibles del formulario tras guardar
+  document.getElementById('f-client-id').value = '';
+  document.getElementById('f-client-secret').value = '';
+  document.getElementById('f-jwt').value = '';
+  showToast('Configuración guardada.');
+  await loadSettingsStatus();
+  closeDrawer();
+});
+
+// ---------------- Bootstrap ----------------
+(async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if(session){
+    enterApp();
+  }
+})();
+</script>
+</body>
+</html>
