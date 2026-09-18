@@ -170,6 +170,7 @@ async function sendAndLog(
   plate: string | null,
   phoneRaw: string,
   eventId: string,
+  eventType: string,
   messageText: string,
 ) {
   const phoneCandidates = buildCandidatePhones(phoneRaw, settings.phone_country_code);
@@ -181,6 +182,7 @@ async function sendAndLog(
       phone: phoneRaw,
       message_body: messageText,
       status: "failed",
+      event_type: eventType,
       error_detail:
         `El teléfono "${phoneRaw}" no tiene código de país y falta configurar ` +
         `al menos un prefijo en el campo "Código de país" del panel (ej: +1, +52, +58).`,
@@ -209,6 +211,7 @@ async function sendAndLog(
       phone: success ? success.phone : phoneCandidates[0],
       message_body: messageText,
       status: success ? "sent" : "failed",
+      event_type: eventType,
       error_detail: success
         ? null
         : `Se probaron ${attempts.length} prefijo(s) y ninguno funcionó: ` +
@@ -222,6 +225,7 @@ async function sendAndLog(
       phone: phoneCandidates[0],
       message_body: messageText,
       status: "failed",
+      event_type: eventType,
       error_detail: String(err),
       taxicaller_event_id: eventId,
     });
@@ -342,6 +346,7 @@ Deno.serve(async (req) => {
       plate,
       phone: phoneRaw,
       status: "failed",
+      event_type: event,
       error_detail: "Configuración de RingCentral incompleta (revisar panel)",
       taxicaller_event_id: eventId,
     });
@@ -352,7 +357,7 @@ Deno.serve(async (req) => {
   }
 
   const messageText = buildMessage(parsed);
-  await sendAndLog(settings, vehicleMake, plate, phoneRaw, eventId, messageText);
+  await sendAndLog(settings, vehicleMake, plate, phoneRaw, eventId, event, messageText);
 
   return new Response(JSON.stringify({ ok: true, action: "message_attempted" }), {
     status: 200,

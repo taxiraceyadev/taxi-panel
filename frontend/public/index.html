@@ -308,7 +308,7 @@
   }
   .row{
     display:grid;
-    grid-template-columns:80px 1fr 1fr 1.2fr 110px 110px;
+    grid-template-columns:96px 1fr 1fr 1.2fr 110px 110px;
     gap:12px;
     align-items:center;
     padding:13px 18px;
@@ -323,7 +323,7 @@
     padding:10px 18px;
   }
   .row.data:hover{ background:var(--surface); }
-  .cell-time{ color:var(--text-muted); }
+  .cell-time{ color:var(--text-muted); white-space:nowrap; }
   .cell-plate{ color:var(--text); }
   .badge{
     display:inline-flex;
@@ -714,7 +714,26 @@ function fmtPhone(p){
 
 function fmtTime(iso){
   const d = new Date(iso);
-  return d.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' });
+  return d.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true, timeZone:'America/New_York' });
+}
+
+// Calcula el offset actual (en minutos) de America/New_York respecto a UTC,
+// contemplando el horario de verano automáticamente.
+function atlantaOffsetMinutes(date){
+  const utc = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
+  const atl = new Date(date.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  return (atl - utc) / 60000;
+}
+
+// Medianoche de "hoy" en Atlanta, expresada como instante UTC real,
+// para que "Enviados hoy" / "Fallidos hoy" reflejen el día de Atlanta
+// sin importar en qué huso horario esté la persona mirando el panel.
+function atlantaTodayStartUTC(){
+  const now = new Date();
+  const offsetMin = atlantaOffsetMinutes(now);
+  const atlantaNow = new Date(now.getTime() + offsetMin * 60000);
+  atlantaNow.setUTCHours(0,0,0,0);
+  return new Date(atlantaNow.getTime() - offsetMin * 60000);
 }
 
 function badge(status){
@@ -771,7 +790,7 @@ function applyFilter(){
 document.getElementById('search-input').addEventListener('input', applyFilter);
 
 function updateStats(rows, onHoldCount){
-  const today = new Date(); today.setHours(0,0,0,0);
+  const today = atlantaTodayStartUTC();
   const todays = rows.filter(r => new Date(r.sent_at) >= today);
   document.getElementById('stat-onhold').textContent = onHoldCount;
   document.getElementById('stat-sent').textContent = todays.filter(r=>r.status==='sent').length;
