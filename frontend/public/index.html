@@ -196,6 +196,49 @@
     transform:translateX(18px);
     background:var(--ok);
   }
+  .power-dot{
+    display:none;
+    width:8px;height:8px;border-radius:999px;
+    background:var(--ok);
+    flex:none;
+  }
+  .power-toggle.is-off .power-dot{ background:var(--text-faint); }
+
+  /* ---------- Theme picker ---------- */
+  .theme-picker{ position:relative; }
+  .theme-popover{
+    position:absolute; top:44px; right:0;
+    width:250px;
+    background:var(--surface-raised);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:14px;
+    box-shadow:0 16px 32px -10px rgba(0,0,0,.55);
+    opacity:0; pointer-events:none; transform:translateY(-6px);
+    transition:opacity .15s ease, transform .15s ease;
+    z-index:25;
+  }
+  .theme-popover.open{ opacity:1; pointer-events:auto; transform:translateY(0); }
+  .theme-popover-title{ font-size:11.5px; color:var(--text-faint); font-weight:600; margin-bottom:10px; }
+  .theme-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .theme-swatch{
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    background:transparent; border:1px solid transparent; cursor:pointer;
+    padding:6px 4px; border-radius:8px; transition:background .15s ease;
+  }
+  .theme-swatch:hover{ background:var(--surface-hover); }
+  .theme-swatch.active{ border-color:var(--accent); }
+  .swatch-dot{
+    width:28px; height:28px; border-radius:50%;
+    border:1px solid rgba(255,255,255,.15);
+    position:relative;
+  }
+  .swatch-accent{
+    position:absolute; right:-2px; bottom:-2px;
+    width:12px; height:12px; border-radius:50%;
+    border:2px solid var(--surface-raised);
+  }
+  .theme-swatch-label{ font-size:10px; color:var(--text-muted); text-align:center; line-height:1.25; }
 
   main{ max-width:1040px; margin:0 auto; padding:28px; }
 
@@ -236,6 +279,28 @@
   .feed-head h2{ font-size:15px; font-weight:600; margin:0; }
   .feed-head span{ font-size:12.5px; color:var(--text-muted); }
 
+  .search-bar{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:9px 12px;
+    margin-bottom:14px;
+    color:var(--text-faint);
+  }
+  .search-bar input{
+    flex:1;
+    background:transparent;
+    border:none;
+    outline:none;
+    color:var(--text);
+    font-family:inherit;
+    font-size:13.5px;
+  }
+  .search-bar input::placeholder{ color:var(--text-faint); }
+
   .feed{
     border:1px solid var(--border);
     border-radius:10px;
@@ -243,7 +308,7 @@
   }
   .row{
     display:grid;
-    grid-template-columns:88px 1fr 1fr 1.3fr 120px;
+    grid-template-columns:80px 1fr 1fr 1.2fr 110px 110px;
     gap:12px;
     align-items:center;
     padding:13px 18px;
@@ -273,6 +338,20 @@
   .badge.sent{ background:rgba(55,184,147,.12); color:var(--ok); }
   .badge.failed{ background:rgba(232,85,95,.12); color:var(--bad); }
   .badge svg{ width:12px;height:12px; }
+
+  .type-badge{
+    display:inline-flex;
+    align-items:center;
+    font-size:12px;
+    font-weight:500;
+    padding:3px 8px;
+    border-radius:6px;
+    width:fit-content;
+  }
+  .type-badge.waiting{ background:rgba(242,169,59,.14); color:var(--accent); }
+  .type-badge.canceled{ background:rgba(232,85,95,.12); color:var(--bad); }
+  .type-badge.delivered{ background:rgba(55,184,147,.12); color:var(--ok); }
+  .type-badge.other{ background:var(--surface-raised); color:var(--text-faint); }
 
   .empty{
     padding:52px 20px;
@@ -340,7 +419,7 @@
   @media (max-width:640px){
     .row{ grid-template-columns:1fr 1fr; row-gap:4px; }
     .row.head{ display:none; }
-    .cell-time{ order:5; font-size:12px; }
+    .cell-time{ order:6; font-size:12px; }
     main{ padding:18px; }
     .stats-row{ grid-template-columns:1fr; }
   }
@@ -382,14 +461,30 @@
       </div>
     </div>
     <div style="display:flex; align-items:center; gap:14px;">
-      <label class="power-toggle" id="power-toggle" title="Prender o apagar el sistema">
+      <label class="power-toggle" id="power-toggle" title="Estado del sistema">
+        <span class="power-dot" id="power-dot"></span>
         <span class="power-label" id="power-label">Activo</span>
-        <span class="power-switch">
+        <span class="power-switch" id="power-switch">
           <input type="checkbox" id="power-checkbox" checked />
           <span class="power-slider"></span>
         </span>
       </label>
       <div style="display:flex; gap:8px;">
+        <div class="theme-picker">
+          <button class="icon-btn" id="btn-theme" title="Tema de color">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/>
+              <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/>
+              <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>
+              <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/>
+              <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+            </svg>
+          </button>
+          <div class="theme-popover" id="theme-popover">
+            <div class="theme-popover-title">Tema de color</div>
+            <div class="theme-grid" id="theme-grid"></div>
+          </div>
+        </div>
         <button class="icon-btn" id="btn-settings" title="Configuración">
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8">
             <circle cx="12" cy="12" r="3"/>
@@ -425,12 +520,17 @@
       <h2>Actividad reciente</h2>
       <span id="feed-count"></span>
     </div>
+    <div class="search-bar">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="text" id="search-input" placeholder="Buscar por unidad o teléfono..." />
+    </div>
     <div class="feed">
       <div class="row head">
         <div>Hora</div>
         <div>Unidad</div>
         <div>Placa</div>
         <div>Teléfono</div>
+        <div>Tipo</div>
         <div>Estado</div>
       </div>
       <div id="feed-body"></div>
@@ -519,6 +619,78 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// ---------------- Temas de color ----------------
+// Preferencia personal de cada persona que use el panel, guardada
+// en su propio navegador (no se comparte entre usuarios).
+const THEMES = {
+  amber: { name:'Ámbar nocturno', vars:{
+    '--ink':'#14171C','--surface':'#1C2028','--surface-raised':'#242A34','--surface-hover':'#2B323E',
+    '--border':'#323945','--accent':'#F2A93B','--accent-dim':'#7A5A22','--ok':'#37B893','--bad':'#E8555F',
+    '--text':'#F3F4F6','--text-muted':'#8B92A0','--text-faint':'#5B6270' }},
+  indigo: { name:'Índigo profundo', vars:{
+    '--ink':'#14131F','--surface':'#1C1B2C','--surface-raised':'#252438','--surface-hover':'#2D2C44',
+    '--border':'#37354F','--accent':'#8B85F5','--accent-dim':'#4A4680','--ok':'#4FD1B3','--bad':'#F26E7E',
+    '--text':'#F2F1FA','--text-muted':'#9793B8','--text-faint':'#615D82' }},
+  forest: { name:'Verde bosque', vars:{
+    '--ink':'#11170F','--surface':'#171F15','--surface-raised':'#20291D','--surface-hover':'#283323',
+    '--border':'#333F2C','--accent':'#D9A441','--accent-dim':'#6E5620','--ok':'#8FCB5C','--bad':'#E17652',
+    '--text':'#F1F4EC','--text-muted':'#98A48C','--text-faint':'#5E6B54' }},
+  ocean: { name:'Océano', vars:{
+    '--ink':'#0D1521','--surface':'#131E2E','--surface-raised':'#1B2A3D','--surface-hover':'#23344A',
+    '--border':'#2C3E56','--accent':'#4FC3E8','--accent-dim':'#245E70','--ok':'#4FD19C','--bad':'#F08A72',
+    '--text':'#EEF4F9','--text-muted':'#8CA2B5','--text-faint':'#526375' }},
+  graphite: { name:'Grafito rojo', vars:{
+    '--ink':'#141414','--surface':'#1C1C1C','--surface-raised':'#262626','--surface-hover':'#2E2E2E',
+    '--border':'#3A3A3A','--accent':'#E24B4B','--accent-dim':'#732626','--ok':'#3FB6A8','--bad':'#F2924B',
+    '--text':'#F4F4F4','--text-muted':'#9B9B9B','--text-faint':'#5F5F5F' }},
+  light: { name:'Claro suave', vars:{
+    '--ink':'#F5F3EF','--surface':'#FFFFFF','--surface-raised':'#F0EEE8','--surface-hover':'#E8E5DD',
+    '--border':'#DDD8CD','--accent':'#C9781F','--accent-dim':'#EAD3B0','--ok':'#2B9A73','--bad':'#D14545',
+    '--text':'#1E1C18','--text-muted':'#6B655A','--text-faint':'#9B9488' }},
+};
+
+function applyTheme(key){
+  const t = THEMES[key] ?? THEMES.amber;
+  Object.entries(t.vars).forEach(([k,v]) => document.documentElement.style.setProperty(k, v));
+  try { localStorage.setItem('panel-theme', key); } catch {}
+  document.querySelectorAll('.theme-swatch').forEach(el => el.classList.toggle('active', el.dataset.key === key));
+}
+
+function renderThemeGrid(){
+  const grid = document.getElementById('theme-grid');
+  let current = 'amber';
+  try { current = localStorage.getItem('panel-theme') || 'amber'; } catch {}
+  grid.innerHTML = Object.entries(THEMES).map(([key,t]) => `
+    <button type="button" class="theme-swatch ${key===current?'active':''}" data-key="${key}" title="${t.name}">
+      <span class="swatch-dot" style="background:${t.vars['--ink']}">
+        <span class="swatch-accent" style="background:${t.vars['--accent']}"></span>
+      </span>
+      <span class="theme-swatch-label">${t.name}</span>
+    </button>
+  `).join('');
+  grid.querySelectorAll('.theme-swatch').forEach(btn => {
+    btn.addEventListener('click', () => applyTheme(btn.dataset.key));
+  });
+}
+
+(function initTheme(){
+  let saved = 'amber';
+  try { saved = localStorage.getItem('panel-theme') || 'amber'; } catch {}
+  applyTheme(saved);
+})();
+
+document.getElementById('btn-theme').addEventListener('click', (e) => {
+  e.stopPropagation();
+  renderThemeGrid();
+  document.getElementById('theme-popover').classList.toggle('open');
+});
+document.addEventListener('click', (e) => {
+  const picker = document.querySelector('.theme-picker');
+  if(picker && !picker.contains(e.target)){
+    document.getElementById('theme-popover').classList.remove('open');
+  }
+});
+
 const loginView = document.getElementById('login-view');
 const appView = document.getElementById('app-view');
 const loginForm = document.getElementById('login-form');
@@ -551,12 +723,24 @@ function badge(status){
   return `<span class="badge failed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 6 6 18M6 6l12 12"/></svg>Error</span>`;
 }
 
+function typeBadge(eventType){
+  const map = {
+    waiting_for_passenger: { cls: 'waiting', label: 'En espera' },
+    canceled_by_company: { cls: 'canceled', label: 'Cancelado' },
+    delivered: { cls: 'delivered', label: 'Entregado' },
+  };
+  const t = map[eventType] ?? { cls: 'other', label: eventType || '—' };
+  return `<span class="type-badge ${t.cls}">${t.label}</span>`;
+}
+
+let allRows = []; // últimas filas cargadas, sin filtrar
+
 function renderRows(rows){
   const body = document.getElementById('feed-body');
   const count = document.getElementById('feed-count');
   count.textContent = rows.length ? `${rows.length} registros` : '';
   if(!rows.length){
-    body.innerHTML = `<div class="empty">Todavía no se registraron envíos. En cuanto TaxiCaller mande el primer webhook, va a aparecer acá.</div>`;
+    body.innerHTML = `<div class="empty">No hay registros que coincidan con la búsqueda.</div>`;
     return;
   }
   body.innerHTML = rows.map(r => `
@@ -565,10 +749,25 @@ function renderRows(rows){
       <div>${r.vehicle_label ?? '—'}</div>
       <div class="cell-plate mono">${r.plate ?? '—'}</div>
       <div class="mono">${fmtPhone(r.phone)}</div>
+      <div>${typeBadge(r.event_type)}</div>
       <div>${badge(r.status)}</div>
     </div>
   `).join('');
 }
+
+function applyFilter(){
+  const q = document.getElementById('search-input').value.trim().toLowerCase();
+  if(!q){ renderRows(allRows); return; }
+  const filtered = allRows.filter(r => {
+    const unit = (r.vehicle_label ?? '').toLowerCase();
+    const plate = (r.plate ?? '').toLowerCase();
+    const phone = (r.phone ?? '').toLowerCase();
+    return unit.includes(q) || plate.includes(q) || phone.includes(q);
+  });
+  renderRows(filtered);
+}
+
+document.getElementById('search-input').addEventListener('input', applyFilter);
 
 function updateStats(rows, onHoldCount){
   const today = new Date(); today.setHours(0,0,0,0);
@@ -591,7 +790,13 @@ async function loadFeed(){
     .eq('status','on_hold');
 
   if(error){ console.error(error); return; }
-  renderRows(rows);
+  allRows = rows;
+  if(!rows.length){
+    document.getElementById('feed-body').innerHTML = `<div class="empty">Todavía no se registraron envíos. En cuanto TaxiCaller mande el primer webhook, va a aparecer acá.</div>`;
+    document.getElementById('feed-count').textContent = '';
+  } else {
+    applyFilter();
+  }
   updateStats(rows, onHoldCount ?? 0);
 }
 
@@ -602,12 +807,37 @@ function subscribeRealtime(){
     .subscribe();
 }
 
-// ---------------- Auth ----------------
+// ---------------- Auth y roles ----------------
+let isAdmin = false;
+
+async function loadRole(){
+  const { data: { session } } = await supabase.auth.getSession();
+  if(!session) return;
+  const { data, error } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
+  isAdmin = !error && data?.role === 'admin';
+  applyRoleUI();
+}
+
+function applyRoleUI(){
+  document.getElementById('btn-settings').style.display = isAdmin ? 'flex' : 'none';
+  document.getElementById('power-switch').style.display = isAdmin ? 'inline-block' : 'none';
+  document.getElementById('power-dot').style.display = isAdmin ? 'none' : 'inline-block';
+  document.getElementById('power-checkbox').disabled = !isAdmin;
+}
+
+async function loadPublicStatus(){
+  const { data, error } = await supabase.rpc('public_system_status');
+  if(error || !data?.length) return;
+  setPowerUI(data[0].enabled !== false);
+}
+
 async function enterApp(){
   loginView.style.display = 'none';
   appView.style.display = 'block';
+  await loadRole();
   await loadFeed();
-  await loadSettingsStatus();
+  await loadPublicStatus();
+  if(isAdmin){ await loadSettingsStatus(); }
   subscribeRealtime();
 }
 
