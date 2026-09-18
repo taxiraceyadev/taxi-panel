@@ -72,11 +72,10 @@ const MESSAGE_BUILDERS: Record<string, (d: ReturnType<typeof parseTaxiCallerPayl
   },
   canceled_by_company: () => `Su servicio ha sido cancelado.`,
   delivered: (d) => {
-    const color = splitBilingualColor(d.vehicleColor);
     const fare = d.fareRaw ?? "N/D";
     return (
-      `Su servicio realizado por la unidad ${d.vehicleMake}, color ${color.es}, ` +
-      `placa ${d.plate ?? ""} fue completado con éxito! El cobro fue de $${fare}.`
+      `Su servicio realizado por la unidad ${d.vehicleMake} fue completado con éxito! ` +
+      `El cobro fue de $${fare}.`
     );
   },
 };
@@ -255,6 +254,21 @@ Deno.serve(async (req) => {
 
   console.log("Payload crudo de TaxiCaller:", JSON.stringify(rawBody));
 
+  // --- Interruptor de encendido/apagado ---
+  // Si está apagado desde el panel, no procesamos nada en absoluto:
+  // ni actualizamos vehicles_on_hold, ni mandamos SMS.
+  const { data: settings, error: settingsError } = await supabase
+    .from("settings")
+    .select("*")
+    .eq("id", 1)
+    .single();
+
+  if (settings?.enabled === false) {
+    return new Response(JSON.stringify({ ok: true, action: "system_paused" }), {
+      status: 200,
+    });
+  }
+
   const { event, vehicleId, plate, vehicleMake, vehicleColor, phoneRaw, eventId } =
     parseTaxiCallerPayload(rawBody);
   const parsed = parseTaxiCallerPayload(rawBody);
@@ -321,12 +335,6 @@ Deno.serve(async (req) => {
       { status: 200 },
     );
   }
-
-  const { data: settings, error: settingsError } = await supabase
-    .from("settings")
-    .select("*")
-    .eq("id", 1)
-    .single();
 
   if (settingsError || !settings?.server_url || !settings?.client_id) {
     await supabase.from("messages_log").insert({

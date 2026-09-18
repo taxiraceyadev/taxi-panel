@@ -145,6 +145,58 @@
   }
   .icon-btn:hover{ color:var(--text); border-color:var(--text-faint); background:var(--surface-hover); }
 
+  /* ---------- Power toggle ---------- */
+  .power-toggle{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    cursor:pointer;
+    user-select:none;
+  }
+  .power-label{
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--ok);
+    transition:color .15s ease;
+  }
+  .power-toggle.is-off .power-label{ color:var(--text-faint); }
+  .power-switch{
+    position:relative;
+    display:inline-block;
+    width:40px;
+    height:22px;
+  }
+  .power-switch input{
+    opacity:0;
+    width:0;
+    height:0;
+  }
+  .power-slider{
+    position:absolute;
+    inset:0;
+    background:var(--surface-raised);
+    border:1px solid var(--border);
+    border-radius:999px;
+    transition:background .15s ease, border-color .15s ease;
+  }
+  .power-slider::before{
+    content:"";
+    position:absolute;
+    height:16px; width:16px;
+    left:2px; top:2px;
+    background:var(--text-faint);
+    border-radius:50%;
+    transition:transform .15s ease, background .15s ease;
+  }
+  .power-switch input:checked + .power-slider{
+    background:rgba(55,184,147,.18);
+    border-color:var(--ok);
+  }
+  .power-switch input:checked + .power-slider::before{
+    transform:translateX(18px);
+    background:var(--ok);
+  }
+
   main{ max-width:1040px; margin:0 auto; padding:28px; }
 
   .stats-row{
@@ -329,18 +381,27 @@
         <div class="topbar-sub">Unidades en espera → SMS al cliente</div>
       </div>
     </div>
-    <div style="display:flex; gap:8px;">
-      <button class="icon-btn" id="btn-settings" title="Configuración">
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-        </svg>
-      </button>
-      <button class="icon-btn" id="btn-logout" title="Cerrar sesión">
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
-        </svg>
-      </button>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <label class="power-toggle" id="power-toggle" title="Prender o apagar el sistema">
+        <span class="power-label" id="power-label">Activo</span>
+        <span class="power-switch">
+          <input type="checkbox" id="power-checkbox" checked />
+          <span class="power-slider"></span>
+        </span>
+      </label>
+      <div style="display:flex; gap:8px;">
+        <button class="icon-btn" id="btn-settings" title="Configuración">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+        <button class="icon-btn" id="btn-logout" title="Cerrar sesión">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+          </svg>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -592,7 +653,29 @@ async function loadSettingsStatus(){
   document.getElementById('status-client-secret').textContent = s.client_secret_set ? 'Configurado' : 'No configurado';
   document.getElementById('status-jwt').textContent = s.jwt_credential_set ? 'Configurado' : 'No configurado';
   document.getElementById('settings-updated').textContent = s.updated_at ? `Última actualización: ${new Date(s.updated_at).toLocaleString('es-AR')}` : '';
+  setPowerUI(s.enabled !== false);
 }
+
+function setPowerUI(enabled){
+  const toggle = document.getElementById('power-toggle');
+  const checkbox = document.getElementById('power-checkbox');
+  const label = document.getElementById('power-label');
+  checkbox.checked = enabled;
+  toggle.classList.toggle('is-off', !enabled);
+  label.textContent = enabled ? 'Activo' : 'Pausado';
+}
+
+document.getElementById('power-checkbox').addEventListener('change', async (e) => {
+  const newValue = e.target.checked;
+  setPowerUI(newValue); // optimista, se corrige si falla
+  const { error } = await supabase.rpc('admin_set_enabled', { p_enabled: newValue });
+  if(error){
+    setPowerUI(!newValue); // revertir
+    showToast('No se pudo cambiar el estado del sistema.');
+    return;
+  }
+  showToast(newValue ? 'Sistema activado: se van a procesar los webhooks de nuevo.' : 'Sistema pausado: no se va a mandar ningún SMS hasta que lo vuelvas a activar.');
+});
 
 document.getElementById('settings-form').addEventListener('submit', async (e) => {
   e.preventDefault();
