@@ -53,28 +53,30 @@ function parseTaxiCallerPayload(body: any) {
 
 // ------------------------------------------------------------
 // Textos de los mensajes, bilingües, tal como los tenías en TaxiCaller.
+//
+// El color viene de TaxiCaller ya bilingüe, ej: "Negro / Black".
+// Lo separamos para usar la palabra correcta en cada mitad del mensaje
+// en vez de mezclar los dos idiomas en la misma oración.
 // ------------------------------------------------------------
-function buildVehicleDesc(make: string, color: string, plate: string | null) {
-  return [make, color, plate].filter(Boolean).join(", ") || "su unidad asignada";
+function splitBilingualColor(colorRaw: string) {
+  const parts = colorRaw.split("/").map((p) => p.trim()).filter(Boolean);
+  if (parts.length >= 2) return { es: parts[0], en: parts[1] };
+  if (parts.length === 1) return { es: parts[0], en: parts[0] };
+  return { es: "", en: "" };
 }
 
 const MESSAGE_BUILDERS: Record<string, (d: ReturnType<typeof parseTaxiCallerPayload>) => string> = {
   waiting_for_passenger: (d) => {
-    const desc = buildVehicleDesc(d.vehicleMake, d.vehicleColor, d.plate);
-    return (
-      `Su vehículo ${desc} le está esperando afuera. / ` +
-      `Your driver ${desc} is waiting for you outside.`
-    );
+    const color = splitBilingualColor(d.vehicleColor);
+    return `Su vehículo ${d.vehicleMake}, color ${color.es}, placa ${d.plate ?? ""}, le está esperando afuera.`;
   },
-  canceled_by_company: () =>
-    `Su servicio ha sido cancelado. / Your service has been cancelled.`,
+  canceled_by_company: () => `Su servicio ha sido cancelado.`,
   delivered: (d) => {
-    const desc = buildVehicleDesc(d.vehicleMake, d.vehicleColor, d.plate);
+    const color = splitBilingualColor(d.vehicleColor);
     const fare = d.fareRaw ?? "N/D";
     return (
-      `¡Su servicio realizado por la Unidad ${desc} fue completado con éxito! ` +
-      `El cobro fue de $${fare}. / Your service made by Unit ${desc} has been ` +
-      `successfully completed, the charge was $${fare}.`
+      `Su servicio realizado por la unidad ${d.vehicleMake}, color ${color.es}, ` +
+      `placa ${d.plate ?? ""} fue completado con éxito! El cobro fue de $${fare}.`
     );
   },
 };
