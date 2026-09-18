@@ -17,6 +17,7 @@
 // ============================================================
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { trySendSms } from "../_shared/ringcentral.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -85,82 +86,7 @@ const MESSAGE_BUILDERS: Record<string, (d: ReturnType<typeof parseTaxiCallerPayl
 const ON_HOLD_EVENTS = new Set(["waiting_for_passenger"]);
 
 // ------------------------------------------------------------
-// Arma la lista de teléfonos candidatos a probar, uno por cada
-// código de país configurado, porque TaxiCaller manda el teléfono
-// sin código de país y no hay forma de saber a cuál corresponde.
-// El campo "Código de país" del panel admite varios separados por
-// coma o espacio, ej: "+1, +52, +58"
-// ------------------------------------------------------------
-function buildCandidatePhones(phoneRaw: string | null, countryCodesRaw: string | null) {
-  if (!phoneRaw) return [];
-  const digitsOnly = phoneRaw.replace(/[^\d+]/g, "");
-  if (digitsOnly.startsWith("+")) return [digitsOnly];
-
-  const prefixes = (countryCodesRaw ?? "")
-    .split(/[,\s]+/)
-    .map((p) => p.replace(/[^\d+]/g, ""))
-    .filter((p) => p.length > 0);
-
-  const base = digitsOnly.replace(/^0+/, "");
-  return prefixes.map((prefix) => `${prefix}${base}`);
-}
-
-// ------------------------------------------------------------
-// 2) RingCentral: obtener access token (JWT bearer flow)
-// ------------------------------------------------------------
-async function getRingCentralToken(settings: any) {
-  const res = await fetch(`${settings.server_url}/restapi/oauth/token`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Authorization:
-        "Basic " + btoa(`${settings.client_id}:${settings.client_secret}`),
-    },
-    body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-      assertion: settings.jwt_credential,
-    }),
-  });
-
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(`RingCentral auth error: ${JSON.stringify(data)}`);
-  }
-  return data.access_token as string;
-}
-
-// ------------------------------------------------------------
-// 3) RingCentral: enviar el SMS
-// ------------------------------------------------------------
-async function sendSms(
-  settings: any,
-  accessToken: string,
-  toPhone: string,
-  text: string,
-) {
-  const extensionPath = settings.extension_id
-    ? `/restapi/v1.0/account/~/extension/${settings.extension_id}/sms`
-    : `/restapi/v1.0/account/~/extension/~/sms`;
-
-  const res = await fetch(`${settings.server_url}${extensionPath}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({
-      from: { phoneNumber: settings.from_number },
-      to: [{ phoneNumber: toPhone }],
-      text,
-    }),
-  });
-
-  const data = await res.json();
-  return { ok: res.ok, data };
-}
-
-// ------------------------------------------------------------
-// Manda el SMS probando cada código de país candidato, y guarda
+// 2) Manda el SMS probando cada código de país candidato, y guarda
 // el resultado en messages_log. Se usa para los 3 eventos que
 // mandan mensaje (waiting, canceled, delivered).
 // ------------------------------------------------------------
@@ -173,52 +99,17 @@ async function sendAndLog(
   eventType: string,
   messageText: string,
 ) {
-  const phoneCandidates = buildCandidatePhones(phoneRaw, settings.phone_country_code);
-
-  if (phoneCandidates.length === 0) {
-    const { error: insertError } = await supabase.from("messages_log").insert({
-      vehicle_label: vehicleLabel,
-      plate,
-      phone: phoneRaw,
-      message_body: messageText,
-      status: "failed",
-      event_type: eventType,
-      error_detail:
-        `El teléfono "${phoneRaw}" no tiene código de país y falta configurar ` +
-        `al menos un prefijo en el campo "Código de país" del panel (ej: +1, +52, +58).`,
-      taxicaller_event_id: eventId,
-    });
-    if (insertError) {
-      console.error("ERROR al insertar en messages_log (sin prefijo):", JSON.stringify(insertError));
-    }
-    return;
-  }
-
   try {
-    const accessToken = await getRingCentralToken(settings);
-    const attempts: { phone: string; data: any }[] = [];
-    let success: { phone: string; data: any } | null = null;
-
-    for (const candidate of phoneCandidates) {
-      const { ok, data } = await sendSms(settings, accessToken, candidate, messageText);
-      attempts.push({ phone: candidate, data });
-      if (ok) {
-        success = { phone: candidate, data };
-        break;
-      }
-    }
+    const result = await trySendSms(settings, phoneRaw, messageText);
 
     const { error: insertError } = await supabase.from("messages_log").insert({
       vehicle_label: vehicleLabel,
       plate,
-      phone: success ? success.phone : phoneCandidates[0],
+      phone: result.phone,
       message_body: messageText,
-      status: success ? "sent" : "failed",
+      status: result.ok ? "sent" : "failed",
       event_type: eventType,
-      error_detail: success
-        ? null
-        : `Se probaron ${attempts.length} prefijo(s) y ninguno funcionó: ` +
-          JSON.stringify(attempts),
+      error_detail: result.ok ? null : result.error,
       taxicaller_event_id: eventId,
     });
     if (insertError) {
@@ -229,7 +120,7 @@ async function sendAndLog(
     const { error: insertError } = await supabase.from("messages_log").insert({
       vehicle_label: vehicleLabel,
       plate,
-      phone: phoneCandidates[0],
+      phone: phoneRaw,
       message_body: messageText,
       status: "failed",
       event_type: eventType,
