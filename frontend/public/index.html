@@ -7,7 +7,7 @@
 <link rel="icon" href="data:," />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --ink:#14171C;
@@ -52,7 +52,7 @@
     background:var(--accent);
     display:flex;align-items:center;justify-content:center;
     margin-bottom:20px;
-    box-shadow:0 0 24px -4px rgba(242,169,59,.55);
+    box-shadow:0 0 24px -4px var(--accent-glow);
   }
   .brand-mark svg{width:18px;height:18px;}
   .login-card h1{
@@ -424,6 +424,55 @@
     main{ padding:18px; }
     .stats-row{ grid-template-columns:1fr; }
   }
+
+  /* ============================================================
+     Tema "Infernal (Doom)" — extras que van más allá de los colores
+     ============================================================ */
+  [data-theme="doom"] body{
+    background:
+      radial-gradient(ellipse 700px 500px at 12% -10%, rgba(232,72,28,.10), transparent 60%),
+      radial-gradient(ellipse 600px 500px at 100% 110%, rgba(107,36,16,.16), transparent 60%),
+      repeating-linear-gradient(0deg, rgba(0,0,0,.16) 0px, rgba(0,0,0,.16) 1px, transparent 1px, transparent 3px),
+      var(--ink);
+  }
+  [data-theme="doom"] .topbar-title,
+  [data-theme="doom"] .login-card h1,
+  [data-theme="doom"] .feed-head h2,
+  [data-theme="doom"] .stat .n{
+    font-family:'Rajdhani', 'Inter', sans-serif;
+    font-weight:700;
+    letter-spacing:.03em;
+    text-transform:uppercase;
+  }
+  [data-theme="doom"] .brand-mark,
+  [data-theme="doom"] .icon-btn,
+  [data-theme="doom"] .btn,
+  [data-theme="doom"] .stat,
+  [data-theme="doom"] .feed,
+  [data-theme="doom"] .row.head,
+  [data-theme="doom"] input,
+  [data-theme="doom"] .badge,
+  [data-theme="doom"] .type-badge,
+  [data-theme="doom"] .search-bar,
+  [data-theme="doom"] .drawer,
+  [data-theme="doom"] .theme-popover,
+  [data-theme="doom"] .swatch-dot,
+  [data-theme="doom"] .toast{
+    border-radius:2px !important;
+  }
+  [data-theme="doom"] .brand-mark{
+    box-shadow:0 0 34px -2px var(--accent-glow);
+  }
+  [data-theme="doom"] .pulse{
+    animation:doom-flicker 1.4s infinite steps(1);
+    box-shadow:0 0 10px 2px var(--accent-glow);
+  }
+  @keyframes doom-flicker{
+    0%,100%{ opacity:1; background:var(--accent); }
+    35%{ opacity:.75; background:var(--accent); }
+    55%{ opacity:1; background:var(--bad); }
+    80%{ opacity:.85; background:var(--accent); }
+  }
 </style>
 </head>
 <body>
@@ -432,7 +481,7 @@
 <div id="login-view">
   <div class="login-card">
     <div class="brand-mark">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M4 17h16M6 17l1.2-5.5A2 2 0 0 1 9.15 10h5.7a2 2 0 0 1 1.95 1.5L18 17M8 17v2M16 17v2" stroke="#241705" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <svg id="brand-icon" viewBox="0 0 24 24" fill="none"><path d="M4 17h16M6 17l1.2-5.5A2 2 0 0 1 9.15 10h5.7a2 2 0 0 1 1.95 1.5L18 17M8 17v2M16 17v2" stroke="#241705" stroke-width="1.8" stroke-linecap="round"/></svg>
     </div>
     <h1>Panel de notificaciones</h1>
     <p>Iniciá sesión para ver el estado de los envíos y configurar la conexión con RingCentral.</p>
@@ -630,38 +679,44 @@ const THEMES = {
   amber: { name:'Ámbar nocturno', vars:{
     '--ink':'#14171C','--surface':'#1C2028','--surface-raised':'#242A34','--surface-hover':'#2B323E',
     '--border':'#323945','--accent':'#F2A93B','--accent-dim':'#7A5A22','--ok':'#37B893','--bad':'#E8555F',
-    '--text':'#F3F4F6','--text-muted':'#8B92A0','--text-faint':'#5B6270' }},
+    '--text':'#F3F4F6','--text-muted':'#8B92A0','--text-faint':'#5B6270','--accent-glow':'rgba(242,169,59,.55)' }},
   indigo: { name:'Índigo profundo', vars:{
     '--ink':'#14131F','--surface':'#1C1B2C','--surface-raised':'#252438','--surface-hover':'#2D2C44',
     '--border':'#37354F','--accent':'#8B85F5','--accent-dim':'#4A4680','--ok':'#4FD1B3','--bad':'#F26E7E',
-    '--text':'#F2F1FA','--text-muted':'#9793B8','--text-faint':'#615D82' }},
+    '--text':'#F2F1FA','--text-muted':'#9793B8','--text-faint':'#615D82','--accent-glow':'rgba(139,133,245,.5)' }},
   forest: { name:'Verde bosque', vars:{
     '--ink':'#11170F','--surface':'#171F15','--surface-raised':'#20291D','--surface-hover':'#283323',
     '--border':'#333F2C','--accent':'#D9A441','--accent-dim':'#6E5620','--ok':'#8FCB5C','--bad':'#E17652',
-    '--text':'#F1F4EC','--text-muted':'#98A48C','--text-faint':'#5E6B54' }},
+    '--text':'#F1F4EC','--text-muted':'#98A48C','--text-faint':'#5E6B54','--accent-glow':'rgba(217,164,65,.5)' }},
   ocean: { name:'Océano', vars:{
     '--ink':'#0D1521','--surface':'#131E2E','--surface-raised':'#1B2A3D','--surface-hover':'#23344A',
     '--border':'#2C3E56','--accent':'#4FC3E8','--accent-dim':'#245E70','--ok':'#4FD19C','--bad':'#F08A72',
-    '--text':'#EEF4F9','--text-muted':'#8CA2B5','--text-faint':'#526375' }},
+    '--text':'#EEF4F9','--text-muted':'#8CA2B5','--text-faint':'#526375','--accent-glow':'rgba(79,195,232,.5)' }},
   graphite: { name:'Grafito rojo', vars:{
     '--ink':'#141414','--surface':'#1C1C1C','--surface-raised':'#262626','--surface-hover':'#2E2E2E',
     '--border':'#3A3A3A','--accent':'#E24B4B','--accent-dim':'#732626','--ok':'#3FB6A8','--bad':'#F2924B',
-    '--text':'#F4F4F4','--text-muted':'#9B9B9B','--text-faint':'#5F5F5F' }},
+    '--text':'#F4F4F4','--text-muted':'#9B9B9B','--text-faint':'#5F5F5F','--accent-glow':'rgba(226,75,75,.5)' }},
   light: { name:'Claro suave', vars:{
     '--ink':'#F5F3EF','--surface':'#FFFFFF','--surface-raised':'#F0EEE8','--surface-hover':'#E8E5DD',
     '--border':'#DDD8CD','--accent':'#C9781F','--accent-dim':'#EAD3B0','--ok':'#2B9A73','--bad':'#D14545',
-    '--text':'#1E1C18','--text-muted':'#6B655A','--text-faint':'#9B9488' }},
+    '--text':'#1E1C18','--text-muted':'#6B655A','--text-faint':'#9B9488','--accent-glow':'rgba(201,120,31,.35)' }},
   doom: { name:'Infernal (Doom)', vars:{
     '--ink':'#180B0A','--surface':'#241412','--surface-raised':'#301A16','--surface-hover':'#3D211B',
     '--border':'#4A2620','--accent':'#E8481C','--accent-dim':'#6B2410','--ok':'#7FCB2E','--bad':'#E0293B',
-    '--text':'#F0E6D8','--text-muted':'#B8A190','--text-faint':'#6B5548' }},
+    '--text':'#F0E6D8','--text-muted':'#B8A190','--text-faint':'#6B5548','--accent-glow':'rgba(232,72,28,.85)' }},
 };
+
+const TAXI_ICON = '<path d="M4 17h16M6 17l1.2-5.5A2 2 0 0 1 9.15 10h5.7a2 2 0 0 1 1.95 1.5L18 17M8 17v2M16 17v2" stroke="#241705" stroke-width="1.8" stroke-linecap="round"/>';
+const SKULL_ICON = '<path d="M12 3c-4.4 0-7 3-7 7 0 2.6 1.3 4.2 2.3 5.3.5.6.7 1.3.7 2.1V19a1 1 0 0 0 1 1h.5v1.3a.7.7 0 0 0 .7.7h1.6a.7.7 0 0 0 .7-.7V20h.5v1.3a.7.7 0 0 0 .7.7h1.6a.7.7 0 0 0 .7-.7V20h.5a1 1 0 0 0 1-1v-1.6c0-.8.2-1.5.7-2.1C17.7 14.2 19 12.6 19 10c0-4-2.6-7-7-7Z" fill="#1a0805" stroke="#1a0805" stroke-width=".4"/><circle cx="9" cy="10.5" r="1.6" fill="#E8481C"/><circle cx="15" cy="10.5" r="1.6" fill="#E8481C"/><path d="M11 13.2 12 15l1-1.8" stroke="#E8481C" stroke-width="1.1" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
 
 function applyTheme(key){
   const t = THEMES[key] ?? THEMES.amber;
   Object.entries(t.vars).forEach(([k,v]) => document.documentElement.style.setProperty(k, v));
+  document.documentElement.setAttribute('data-theme', key);
   try { localStorage.setItem('panel-theme', key); } catch {}
   document.querySelectorAll('.theme-swatch').forEach(el => el.classList.toggle('active', el.dataset.key === key));
+  const icon = document.getElementById('brand-icon');
+  if(icon){ icon.innerHTML = key === 'doom' ? SKULL_ICON : TAXI_ICON; }
 }
 
 function renderThemeGrid(){
