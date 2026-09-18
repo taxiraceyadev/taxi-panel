@@ -176,7 +176,7 @@ async function sendAndLog(
   const phoneCandidates = buildCandidatePhones(phoneRaw, settings.phone_country_code);
 
   if (phoneCandidates.length === 0) {
-    await supabase.from("messages_log").insert({
+    const { error: insertError } = await supabase.from("messages_log").insert({
       vehicle_label: vehicleLabel,
       plate,
       phone: phoneRaw,
@@ -188,6 +188,9 @@ async function sendAndLog(
         `al menos un prefijo en el campo "Código de país" del panel (ej: +1, +52, +58).`,
       taxicaller_event_id: eventId,
     });
+    if (insertError) {
+      console.error("ERROR al insertar en messages_log (sin prefijo):", JSON.stringify(insertError));
+    }
     return;
   }
 
@@ -205,7 +208,7 @@ async function sendAndLog(
       }
     }
 
-    await supabase.from("messages_log").insert({
+    const { error: insertError } = await supabase.from("messages_log").insert({
       vehicle_label: vehicleLabel,
       plate,
       phone: success ? success.phone : phoneCandidates[0],
@@ -218,8 +221,12 @@ async function sendAndLog(
           JSON.stringify(attempts),
       taxicaller_event_id: eventId,
     });
+    if (insertError) {
+      console.error("ERROR al insertar en messages_log (envío OK):", JSON.stringify(insertError));
+    }
   } catch (err) {
-    await supabase.from("messages_log").insert({
+    console.error("EXCEPCIÓN en sendAndLog:", String(err));
+    const { error: insertError } = await supabase.from("messages_log").insert({
       vehicle_label: vehicleLabel,
       plate,
       phone: phoneCandidates[0],
@@ -229,6 +236,9 @@ async function sendAndLog(
       error_detail: String(err),
       taxicaller_event_id: eventId,
     });
+    if (insertError) {
+      console.error("ERROR al insertar en messages_log (excepción):", JSON.stringify(insertError));
+    }
   }
 }
 
@@ -258,6 +268,16 @@ Deno.serve(async (req) => {
 
   console.log("Payload crudo de TaxiCaller:", JSON.stringify(rawBody));
 
+  try {
+    return await handleTaxiCallerEvent(rawBody);
+  } catch (err) {
+    console.error("EXCEPCIÓN NO CAPTURADA en el handler:", String(err), err instanceof Error ? err.stack : "");
+    return new Response(JSON.stringify({ ok: false, error: String(err) }), { status: 500 });
+  }
+});
+
+async function handleTaxiCallerEvent(rawBody: any): Promise<Response> {
+
   // --- Interruptor de encendido/apagado ---
   // Si está apagado desde el panel, no procesamos nada en absoluto:
   // ni actualizamos vehicles_on_hold, ni mandamos SMS.
@@ -266,6 +286,10 @@ Deno.serve(async (req) => {
     .select("*")
     .eq("id", 1)
     .single();
+
+  if (settingsError) {
+    console.error("ERROR al leer settings:", JSON.stringify(settingsError));
+  }
 
   if (settings?.enabled === false) {
     return new Response(JSON.stringify({ ok: true, action: "system_paused" }), {
@@ -288,23 +312,30 @@ Deno.serve(async (req) => {
   // --- Llevar el estado de la unidad (vehicles_on_hold) ---
   if (isOnHoldEvent && vehicleId) {
     // Deduplicación: si ya estaba on_hold, no mandamos mensaje de nuevo.
-    const { data: existing } = await supabase
+    const { data: existing, error: selectError } = await supabase
       .from("vehicles_on_hold")
       .select("id,status")
       .eq("taxicaller_vehicle_id", vehicleId)
       .maybeSingle();
 
+    if (selectError) {
+      console.error("ERROR al leer vehicles_on_hold:", JSON.stringify(selectError));
+    }
+
     if (existing?.status === "on_hold") {
-      await supabase
+      const { error: updateError } = await supabase
         .from("vehicles_on_hold")
         .update({ last_seen_at: new Date().toISOString() })
         .eq("id", existing.id);
+      if (updateError) {
+        console.error("ERROR al actualizar last_seen_at:", JSON.stringify(updateError));
+      }
       return new Response(JSON.stringify({ ok: true, action: "duplicate_ignored" }), {
         status: 200,
       });
     }
 
-    await supabase.from("vehicles_on_hold").upsert(
+    const { error: upsertError } = await supabase.from("vehicles_on_hold").upsert(
       {
         taxicaller_vehicle_id: vehicleId,
         vehicle_label: vehicleMake,
@@ -314,12 +345,18 @@ Deno.serve(async (req) => {
       },
       { onConflict: "taxicaller_vehicle_id" },
     );
+    if (upsertError) {
+      console.error("ERROR al upsertear vehicles_on_hold:", JSON.stringify(upsertError));
+    }
   } else if (!isOnHoldEvent && vehicleId) {
     // Cualquier otro evento reconocido libera la unidad.
-    await supabase
+    const { error: clearError } = await supabase
       .from("vehicles_on_hold")
       .update({ status: "cleared", last_seen_at: new Date().toISOString() })
       .eq("taxicaller_vehicle_id", vehicleId);
+    if (clearError) {
+      console.error("ERROR al liberar vehicles_on_hold:", JSON.stringify(clearError));
+    }
   }
 
   // --- ¿Este evento manda SMS? ---
@@ -341,7 +378,7 @@ Deno.serve(async (req) => {
   }
 
   if (settingsError || !settings?.server_url || !settings?.client_id) {
-    await supabase.from("messages_log").insert({
+    const { error: insertError } = await supabase.from("messages_log").insert({
       vehicle_label: vehicleMake,
       plate,
       phone: phoneRaw,
@@ -350,6 +387,9 @@ Deno.serve(async (req) => {
       error_detail: "Configuración de RingCentral incompleta (revisar panel)",
       taxicaller_event_id: eventId,
     });
+    if (insertError) {
+      console.error("ERROR al insertar en messages_log (settings incompletos):", JSON.stringify(insertError));
+    }
     return new Response(
       JSON.stringify({ ok: false, reason: "settings incompletos" }),
       { status: 200 },
@@ -362,4 +402,4 @@ Deno.serve(async (req) => {
   return new Response(JSON.stringify({ ok: true, action: "message_attempted" }), {
     status: 200,
   });
-});
+}
