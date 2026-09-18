@@ -27,7 +27,7 @@ const supabase = createClient(supabaseUrl, serviceRoleKey);
 // ------------------------------------------------------------
 // 1) MAPEO DEL PAYLOAD DE TAXICALLER
 //
-// Confirmado con un webhook real, el payload de esta cuenta viene así:
+// Confirmado con webhooks reales, el payload de esta cuenta viene así:
 //   {"event":"waiting_for_passenger","job_id":"327474472",
 //    "vehicle_make":"R142 Kia Spectra 2008","vehicle_color":"Azul / Blue",
 //    "vehicle_plate":"ABM6PI","passenger_phone":"404963673"}
@@ -35,9 +35,11 @@ const supabase = createClient(supabaseUrl, serviceRoleKey);
 // No manda un ID de vehículo aparte, así que usamos la PLACA como
 // identificador único de la unidad para la deduplicación.
 //
-// TODO: todavía no sabemos qué valor manda TaxiCaller en "event" cuando
-// la unidad DEJA de estar en espera (se completa el viaje, por ejemplo).
-// Cuando tengas ese caso real, mandámelo y ajustamos isCleared.
+// TaxiCaller tiene una lista fija de estados posibles (ver Admin Panel ->
+// Settings -> Notifications -> Customer): cancelado, callout, esperando
+// pasajero, pasajero a bordo, entregado. En vez de adivinar el nombre
+// exacto de cada uno, tratamos CUALQUIER evento que no sea
+// "waiting_for_passenger" como que la unidad dejó de estar en espera.
 // ------------------------------------------------------------
 function parseTaxiCallerPayload(body: any) {
   const plate = body?.vehicle_plate ?? body?.vehicle?.plate ?? "Sin placa";
@@ -52,9 +54,8 @@ function parseTaxiCallerPayload(body: any) {
 
   const rawStatus = body?.event ?? body?.event_type ?? body?.status ?? "";
   const isOnHold = /waiting_for_passenger|hold|wait|espera/i.test(String(rawStatus));
-  const isCleared = /clear|active|available|libre|completed|cancelled/i.test(
-    String(rawStatus),
-  );
+  // Cualquier evento presente que NO sea "en espera" libera la unidad.
+  const isCleared = !!rawStatus && !isOnHold;
 
   const eventId = body?.job_id ?? body?.event_id ?? body?.id ?? crypto.randomUUID();
 
@@ -70,18 +71,27 @@ function parseTaxiCallerPayload(body: any) {
 }
 
 // ------------------------------------------------------------
-// Normaliza el teléfono a formato internacional (E.164), que es
-// lo que exige RingCentral. TaxiCaller lo manda sin código de país
-// (ej: "404963673"), así que le anteponemos el que hayas configurado
-// en la tuerquita del panel (campo "Código de país").
+// Arma la lista de teléfonos candidatos a probar, uno por cada
+// código de país configurado, porque TaxiCaller manda el teléfono
+// sin código de país y no hay forma de saber a cuál corresponde
+// (ej: "404963673" podría ser +1, +52, +58, etc.). La función va
+// a probarlos en orden hasta que RingCentral acepte uno.
+//
+// El campo "Código de país" del panel admite varios separados por
+// coma o espacio, ej: "+1, +52, +58"
 // ------------------------------------------------------------
-function normalizePhone(phoneRaw: string | null, countryCode: string | null) {
-  if (!phoneRaw) return null;
+function buildCandidatePhones(phoneRaw: string | null, countryCodesRaw: string | null) {
+  if (!phoneRaw) return [];
   const digitsOnly = phoneRaw.replace(/[^\d+]/g, "");
-  if (digitsOnly.startsWith("+")) return digitsOnly; // ya viene completo
-  const prefix = (countryCode ?? "").replace(/[^\d+]/g, "");
-  if (!prefix) return null; // no hay forma de completarlo, hay que configurar el prefijo
-  return `${prefix}${digitsOnly.replace(/^0+/, "")}`;
+  if (digitsOnly.startsWith("+")) return [digitsOnly]; // ya viene completo, no hay nada que probar
+
+  const prefixes = (countryCodesRaw ?? "")
+    .split(/[,\s]+/)
+    .map((p) => p.replace(/[^\d+]/g, ""))
+    .filter((p) => p.length > 0);
+
+  const base = digitsOnly.replace(/^0+/, "");
+  return prefixes.map((prefix) => `${prefix}${base}`);
 }
 
 // ------------------------------------------------------------
@@ -247,9 +257,9 @@ Deno.serve(async (req) => {
     );
   }
 
-  const phone = normalizePhone(phoneRaw, settings.phone_country_code);
+  const phoneCandidates = buildCandidatePhones(phoneRaw, settings.phone_country_code);
 
-  if (!phone) {
+  if (phoneCandidates.length === 0) {
     await supabase.from("messages_log").insert({
       vehicle_label: vehicleLabel,
       plate,
@@ -257,7 +267,7 @@ Deno.serve(async (req) => {
       status: "failed",
       error_detail:
         `El teléfono "${phoneRaw}" no tiene código de país y falta configurar ` +
-        `el campo "Código de país" en la tuerquita del panel (ej: +54).`,
+        `al menos un prefijo en el campo "Código de país" del panel (ej: +1, +52, +58).`,
       taxicaller_event_id: eventId,
     });
     return new Response(
@@ -272,26 +282,44 @@ Deno.serve(async (req) => {
 
   try {
     const accessToken = await getRingCentralToken(settings);
-    const { ok, data } = await sendSms(settings, accessToken, phone, messageText);
+
+    // Probamos cada candidato en orden. Nos quedamos con el primero
+    // que RingCentral acepte; si ninguno funciona, logueamos todos
+    // los intentos para poder diagnosticar.
+    const attempts: { phone: string; data: any }[] = [];
+    let success: { phone: string; data: any } | null = null;
+
+    for (const candidate of phoneCandidates) {
+      const { ok, data } = await sendSms(settings, accessToken, candidate, messageText);
+      attempts.push({ phone: candidate, data });
+      if (ok) {
+        success = { phone: candidate, data };
+        break;
+      }
+    }
 
     await supabase.from("messages_log").insert({
       vehicle_label: vehicleLabel,
       plate,
-      phone,
+      phone: success ? success.phone : phoneCandidates[0],
       message_body: messageText,
-      status: ok ? "sent" : "failed",
-      error_detail: ok ? null : JSON.stringify(data),
+      status: success ? "sent" : "failed",
+      error_detail: success
+        ? null
+        : `Se probaron ${attempts.length} prefijo(s) y ninguno funcionó: ` +
+          JSON.stringify(attempts),
       taxicaller_event_id: eventId,
     });
 
-    return new Response(JSON.stringify({ ok, ringcentral: data }), {
-      status: 200,
-    });
+    return new Response(
+      JSON.stringify({ ok: !!success, attempts, success }),
+      { status: 200 },
+    );
   } catch (err) {
     await supabase.from("messages_log").insert({
       vehicle_label: vehicleLabel,
       plate,
-      phone,
+      phone: phoneCandidates[0],
       message_body: messageText,
       status: "failed",
       error_detail: String(err),
