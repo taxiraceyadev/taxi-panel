@@ -340,6 +340,24 @@
   .badge.failed{ background:rgba(232,85,95,.12); color:var(--bad); }
   .badge svg{ width:12px;height:12px; }
 
+  .retry-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    margin-top:5px;
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--text-muted);
+    font-size:11px;
+    font-family:inherit;
+    padding:3px 8px;
+    border-radius:6px;
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  .retry-btn:hover{ color:var(--text); border-color:var(--text-faint); background:var(--surface-hover); }
+  .retry-btn:disabled{ opacity:.5; cursor:default; }
+
   .type-badge{
     display:inline-flex;
     align-items:center;
@@ -811,11 +829,17 @@ function atlantaTodayStartUTC(){
   return new Date(atlantaNow.getTime() - offsetMin * 60000);
 }
 
-function badge(status){
+function badge(status, rowId){
   if(status === 'sent'){
     return `<span class="badge sent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>Enviado</span>`;
   }
-  return `<span class="badge failed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 6 6 18M6 6l12 12"/></svg>Error</span>`;
+  const retryBtn = isAdmin
+    ? `<button type="button" class="retry-btn" data-id="${rowId}" title="Reintentar envío">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5"/></svg>
+        Reintentar
+      </button>`
+    : '';
+  return `<span class="badge failed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 6 6 18M6 6l12 12"/></svg>Error</span>${retryBtn}`;
 }
 
 function typeBadge(eventType){
@@ -845,10 +869,34 @@ function renderRows(rows){
       <div class="cell-plate mono">${r.plate ?? '—'}</div>
       <div class="mono">${fmtPhone(r.phone)}</div>
       <div>${typeBadge(r.event_type)}</div>
-      <div>${badge(r.status)}</div>
+      <div>${badge(r.status, r.id)}</div>
     </div>
   `).join('');
 }
+
+document.getElementById('feed-body').addEventListener('click', async (e) => {
+  const btn = e.target.closest('.retry-btn');
+  if(!btn) return;
+  const messageId = btn.dataset.id;
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/retry-message`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ message_id: messageId }),
+    });
+    const result = await res.json();
+    showToast(result.ok ? 'Mensaje reenviado correctamente.' : `No se pudo reenviar: ${result.reason ?? result.error ?? 'error desconocido'}`);
+  } catch (err) {
+    showToast('Error de conexión al reintentar.');
+  }
+  await loadFeed();
+});
 
 function applyFilter(){
   const q = document.getElementById('search-input').value.trim().toLowerCase();
