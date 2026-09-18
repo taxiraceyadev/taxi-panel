@@ -705,10 +705,7 @@ function showToast(msg){
 
 function fmtPhone(p){
   if(!p) return '—';
-  // Muestra los últimos 4 dígitos visibles, el resto enmascarado.
-  const clean = p.replace(/\s+/g,'');
-  if(clean.length <= 4) return clean;
-  return clean.slice(0,-4).replace(/\d/g,'•') + clean.slice(-4);
+  return p.replace(/\s+/g,'');
 }
 
 function fmtTime(iso){
