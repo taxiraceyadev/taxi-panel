@@ -302,6 +302,29 @@
   }
   .search-bar input::placeholder{ color:var(--text-faint); }
 
+  .date-filter-bar{
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:8px 10px;
+    margin-bottom:14px;
+    font-size:12.5px;
+    color:var(--text-muted);
+  }
+  .date-filter-bar input[type=date]{
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:6px 9px;
+    border-radius:8px;
+    font-size:12.5px;
+    font-family:inherit;
+    color-scheme:dark;
+  }
+  [data-theme="light"] .date-filter-bar input[type=date]{ color-scheme:light; }
+  .btn-small{ padding:6px 11px; font-size:12px; font-weight:500; }
+  .date-filter-note{ color:var(--text-faint); font-size:11.5px; }
+
   .feed{
     border:1px solid var(--border);
     border-radius:10px;
@@ -594,6 +617,14 @@
     <div class="search-bar">
       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
       <input type="text" id="search-input" placeholder="Buscar por unidad o teléfono..." />
+    </div>
+    <div class="date-filter-bar">
+      <label for="filter-date-from">Desde</label>
+      <input type="date" id="filter-date-from" />
+      <label for="filter-date-to">Hasta</label>
+      <input type="date" id="filter-date-to" />
+      <button type="button" id="btn-clear-dates" class="btn btn-ghost btn-small">Limpiar fechas</button>
+      <span class="date-filter-note">(las fechas son en huso de Atlanta)</span>
     </div>
     <div class="feed">
       <div class="row head">
@@ -912,20 +943,46 @@ function applyFilter(){
 
 document.getElementById('search-input').addEventListener('input', applyFilter);
 
-function updateStats(rows, onHoldCount){
-  const today = atlantaTodayStartUTC();
-  const todays = rows.filter(r => new Date(r.sent_at) >= today);
+function updateOnHoldStat(onHoldCount){
   document.getElementById('stat-onhold').textContent = onHoldCount;
-  document.getElementById('stat-sent').textContent = todays.filter(r=>r.status==='sent').length;
-  document.getElementById('stat-failed').textContent = todays.filter(r=>r.status==='failed').length;
+}
+
+async function loadTodayStats(){
+  const todayStart = atlantaTodayStartUTC();
+  const { data, error } = await supabase
+    .from('messages_log')
+    .select('status')
+    .gte('sent_at', todayStart.toISOString())
+    .limit(2000);
+  if(error){ console.error(error); return; }
+  document.getElementById('stat-sent').textContent = data.filter(r => r.status === 'sent').length;
+  document.getElementById('stat-failed').textContent = data.filter(r => r.status === 'failed').length;
+}
+
+// Límites de un día calendario en Atlanta (00:00:00 y 23:59:59.999),
+// expresados como instantes UTC reales, para poder filtrar sent_at
+// (que está guardado en UTC) de forma correcta.
+function atlantaDayStartUTC(dateStr){
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const offsetMin = atlantaOffsetMinutes(new Date());
+  const naiveUTCMidnight = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+  return new Date(naiveUTCMidnight.getTime() - offsetMin * 60000);
+}
+function atlantaDayEndUTC(dateStr){
+  return new Date(atlantaDayStartUTC(dateStr).getTime() + 24 * 60 * 60 * 1000 - 1);
 }
 
 async function loadFeed(){
-  const { data: rows, error } = await supabase
-    .from('messages_log')
-    .select('*')
-    .order('sent_at', { ascending:false })
-    .limit(100);
+  const dateFrom = document.getElementById('filter-date-from').value;
+  const dateTo = document.getElementById('filter-date-to').value;
+  const hasDateFilter = !!(dateFrom || dateTo);
+
+  let query = supabase.from('messages_log').select('*').order('sent_at', { ascending:false });
+  if(dateFrom){ query = query.gte('sent_at', atlantaDayStartUTC(dateFrom).toISOString()); }
+  if(dateTo){ query = query.lte('sent_at', atlantaDayEndUTC(dateTo).toISOString()); }
+  query = query.limit(hasDateFilter ? 1000 : 100);
+
+  const { data: rows, error } = await query;
 
   const { count: onHoldCount } = await supabase
     .from('vehicles_on_hold')
@@ -935,13 +992,24 @@ async function loadFeed(){
   if(error){ console.error(error); return; }
   allRows = rows;
   if(!rows.length){
-    document.getElementById('feed-body').innerHTML = `<div class="empty">Todavía no se registraron envíos. En cuanto TaxiCaller mande el primer webhook, va a aparecer acá.</div>`;
+    document.getElementById('feed-body').innerHTML = hasDateFilter
+      ? `<div class="empty">No hay registros en ese rango de fechas.</div>`
+      : `<div class="empty">Todavía no se registraron envíos. En cuanto TaxiCaller mande el primer webhook, va a aparecer acá.</div>`;
     document.getElementById('feed-count').textContent = '';
   } else {
     applyFilter();
   }
-  updateStats(rows, onHoldCount ?? 0);
+  updateOnHoldStat(onHoldCount ?? 0);
+  await loadTodayStats();
 }
+
+document.getElementById('filter-date-from').addEventListener('change', loadFeed);
+document.getElementById('filter-date-to').addEventListener('change', loadFeed);
+document.getElementById('btn-clear-dates').addEventListener('click', () => {
+  document.getElementById('filter-date-from').value = '';
+  document.getElementById('filter-date-to').value = '';
+  loadFeed();
+});
 
 function subscribeRealtime(){
   supabase.channel('messages_log_changes')
