@@ -344,6 +344,66 @@
   .load-more-btn:hover{ color:var(--text); border-color:var(--text-faint); background:var(--surface-hover); }
   .load-more-btn:disabled{ opacity:.5; cursor:default; }
 
+  /* ---------- Modal de detalle de mensaje ---------- */
+  .msg-modal{
+    position:fixed;
+    top:50%; left:50%;
+    transform:translate(-50%,-48%);
+    width:92%; max-width:460px;
+    max-height:80vh;
+    overflow-y:auto;
+    background:var(--surface-raised);
+    border:1px solid var(--border);
+    border-radius:12px;
+    box-shadow:0 24px 48px -12px rgba(0,0,0,.6);
+    opacity:0; pointer-events:none;
+    transition:opacity .18s ease, transform .18s ease;
+    z-index:31;
+  }
+  .msg-modal.open{ opacity:1; pointer-events:auto; transform:translate(-50%,-50%); }
+  .msg-modal-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 20px 0;
+  }
+  .msg-modal-head h2{ font-size:15px; font-weight:600; margin:0; }
+  .msg-modal-body{ padding:16px 20px 22px; }
+  .msg-detail-row{
+    display:flex; justify-content:space-between; gap:16px;
+    padding:8px 0;
+    border-bottom:1px solid var(--border);
+    font-size:13px;
+  }
+  .msg-detail-row:last-of-type{ border-bottom:none; }
+  .msg-detail-label{ color:var(--text-muted); flex:none; }
+  .msg-detail-value{ text-align:right; color:var(--text); word-break:break-word; }
+  .msg-body-block{
+    margin-top:14px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:12px 14px;
+    font-size:13.5px;
+    line-height:1.5;
+    color:var(--text);
+    white-space:pre-wrap;
+  }
+  .msg-error-block{
+    margin-top:10px;
+    background:rgba(232,85,95,.08);
+    border:1px solid rgba(232,85,95,.3);
+    border-radius:8px;
+    padding:12px 14px;
+    font-size:12.5px;
+    line-height:1.5;
+    color:var(--bad);
+    word-break:break-word;
+  }
+  .msg-block-label{
+    font-size:11px; color:var(--text-faint); font-weight:600;
+    text-transform:uppercase; letter-spacing:.03em;
+    margin-top:14px; margin-bottom:4px;
+  }
+
   .feed{
     border:1px solid var(--border);
     border-radius:10px;
@@ -365,6 +425,7 @@
     font-size:12px;
     padding:10px 18px;
   }
+  .row.data{ cursor:pointer; }
   .row.data:hover{ background:var(--surface); }
   .cell-time{ color:var(--text-muted); white-space:nowrap; }
   .cell-plate{ color:var(--text); }
@@ -733,6 +794,18 @@
   </div>
 </div>
 
+<!-- ================= DETALLE DE MENSAJE ================= -->
+<div class="scrim" id="msg-scrim"></div>
+<div class="msg-modal" id="msg-modal">
+  <div class="msg-modal-head">
+    <h2>Detalle del mensaje</h2>
+    <button class="icon-btn" id="btn-close-msg">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="msg-modal-body" id="msg-modal-body"></div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script type="module">
@@ -914,7 +987,7 @@ function renderRows(rows){
     return;
   }
   body.innerHTML = rows.map(r => `
-    <div class="row data">
+    <div class="row data" data-id="${r.id}">
       <div class="cell-time mono">${fmtTime(r.sent_at)}</div>
       <div>${r.vehicle_label ?? '—'}</div>
       <div class="cell-plate mono">${r.plate ?? '—'}</div>
@@ -927,27 +1000,93 @@ function renderRows(rows){
 
 document.getElementById('feed-body').addEventListener('click', async (e) => {
   const btn = e.target.closest('.retry-btn');
-  if(!btn) return;
-  const messageId = btn.dataset.id;
-  btn.disabled = true;
-  btn.textContent = 'Enviando...';
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/retry-message`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ message_id: messageId }),
-    });
-    const result = await res.json();
-    showToast(result.ok ? 'Mensaje reenviado correctamente.' : `No se pudo reenviar: ${result.reason ?? result.error ?? 'error desconocido'}`);
-  } catch (err) {
-    showToast('Error de conexión al reintentar.');
+  if(btn){
+    const messageId = btn.dataset.id;
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/retry-message`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ message_id: messageId }),
+      });
+      const result = await res.json();
+      showToast(result.ok ? 'Mensaje reenviado correctamente.' : `No se pudo reenviar: ${result.reason ?? result.error ?? 'error desconocido'}`);
+    } catch (err) {
+      showToast('Error de conexión al reintentar.');
+    }
+    await loadFeed();
+    return;
   }
-  await loadFeed();
+
+  const row = e.target.closest('.row.data');
+  if(row){
+    openMessageDetail(row.dataset.id);
+  }
 });
+
+function fmtFullDateTime(iso){
+  const d = new Date(iso);
+  return d.toLocaleString('en-US', {
+    timeZone: 'America/New_York',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }) + ' (Atlanta)';
+}
+
+const TYPE_LABELS = {
+  waiting_for_passenger: 'En espera',
+  canceled_by_company: 'Cancelado',
+  delivered: 'Entregado',
+};
+
+function openMessageDetail(id){
+  const r = allRows.find(row => String(row.id) === String(id));
+  if(!r) return;
+
+  const rows = [
+    ['Unidad', r.vehicle_label ?? '—'],
+    ['Placa', r.plate ?? '—'],
+    ['Teléfono', r.phone ?? '—'],
+    ['Tipo', TYPE_LABELS[r.event_type] ?? (r.event_type ?? '—')],
+    ['Estado', r.status === 'sent' ? 'Enviado' : 'Error'],
+    ['Fecha y hora', fmtFullDateTime(r.sent_at)],
+  ];
+  if(r.retried_at){
+    rows.push(['Reintentado', fmtFullDateTime(r.retried_at)]);
+  }
+
+  let html = rows.map(([label, value]) => `
+    <div class="msg-detail-row">
+      <span class="msg-detail-label">${label}</span>
+      <span class="msg-detail-value">${value}</span>
+    </div>
+  `).join('');
+
+  html += `<div class="msg-block-label">Texto del mensaje</div>`;
+  html += `<div class="msg-body-block">${r.message_body ? r.message_body : '(no se guardó texto para este mensaje)'}</div>`;
+
+  if(r.error_detail){
+    html += `<div class="msg-block-label">Detalle del error</div>`;
+    html += `<div class="msg-error-block">${r.error_detail}</div>`;
+  }
+
+  document.getElementById('msg-modal-body').innerHTML = html;
+  document.getElementById('msg-modal').classList.add('open');
+  document.getElementById('msg-scrim').classList.add('open');
+}
+
+function closeMessageDetail(){
+  document.getElementById('msg-modal').classList.remove('open');
+  document.getElementById('msg-scrim').classList.remove('open');
+}
+
+document.getElementById('btn-close-msg').addEventListener('click', closeMessageDetail);
+document.getElementById('msg-scrim').addEventListener('click', closeMessageDetail);
 
 function applyFilter(){
   const q = document.getElementById('search-input').value.trim().toLowerCase();
