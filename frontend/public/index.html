@@ -595,6 +595,7 @@
     80%{ opacity:.85; background:var(--accent); }
   }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -710,6 +711,7 @@
       <label for="filter-date-to">Hasta</label>
       <input type="date" id="filter-date-to" />
       <button type="button" id="btn-clear-dates" class="btn btn-ghost btn-small">Limpiar fechas</button>
+      <button type="button" id="btn-export-excel" class="btn btn-ghost btn-small">⬇ Exportar Excel</button>
       <span class="date-filter-note">(las fechas son en huso de Atlanta)</span>
     </div>
     <div class="feed">
@@ -1101,7 +1103,10 @@ function openMessageDetail(id){
   `).join('');
 
   html += `<div class="msg-block-label">Texto del mensaje</div>`;
-  html += `<div class="msg-body-block">${r.message_body ? r.message_body : '(no se guardó texto para este mensaje)'}</div>`;
+  html += `<div class="msg-body-block" id="msg-body-text">${r.message_body ? r.message_body : '(no se guardó texto para este mensaje)'}</div>`;
+  if(r.message_body){
+    html += `<button type="button" class="btn btn-ghost btn-small" id="btn-copy-msg" style="margin-top:8px;">Copiar mensaje</button>`;
+  }
 
   if(r.error_detail){
     html += `<div class="msg-block-label">Detalle del error</div>`;
@@ -1111,6 +1116,18 @@ function openMessageDetail(id){
   document.getElementById('msg-modal-body').innerHTML = html;
   document.getElementById('msg-modal').classList.add('open');
   document.getElementById('msg-scrim').classList.add('open');
+
+  const copyBtn = document.getElementById('btn-copy-msg');
+  if(copyBtn){
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(r.message_body);
+        showToast('Mensaje copiado al portapapeles.');
+      } catch {
+        showToast('No se pudo copiar automáticamente. Seleccioná el texto a mano.');
+      }
+    });
+  }
 }
 
 function closeMessageDetail(){
@@ -1232,6 +1249,103 @@ document.getElementById('btn-clear-dates').addEventListener('click', () => {
   resetPagination();
   loadFeed();
 });
+
+// ---------------- Exportar a Excel ----------------
+document.getElementById('btn-export-excel').addEventListener('click', exportExcel);
+
+async function exportExcel(){
+  const btn = document.getElementById('btn-export-excel');
+  btn.disabled = true;
+  btn.textContent = 'Generando...';
+
+  const dateFrom = document.getElementById('filter-date-from').value;
+  const dateTo = document.getElementById('filter-date-to').value;
+
+  let query = supabase.from('messages_log').select('*').order('sent_at', { ascending:false });
+  if(dateFrom){ query = query.gte('sent_at', atlantaDayStartUTC(dateFrom).toISOString()); }
+  if(dateTo){ query = query.lte('sent_at', atlantaDayEndUTC(dateTo).toISOString()); }
+  query = query.limit(5000);
+
+  const { data: rows, error } = await query;
+  btn.disabled = false;
+  btn.textContent = '⬇ Exportar Excel';
+
+  if(error || !rows){ showToast('No se pudo generar el archivo.'); return; }
+  if(!rows.length){ showToast('No hay datos para exportar en ese rango.'); return; }
+
+  const total = rows.length;
+  const sentCount = rows.filter(r => r.status === 'sent').length;
+  const failedCount = rows.filter(r => r.status === 'failed').length;
+  const successRate = total ? ((sentCount / total) * 100).toFixed(1) + '%' : '—';
+
+  const byType = {};
+  for(const t of ['waiting_for_passenger', 'canceled_by_company', 'delivered']){
+    const rowsT = rows.filter(r => r.event_type === t);
+    byType[t] = {
+      label: TYPE_LABELS[t] ?? t,
+      total: rowsT.length,
+      sent: rowsT.filter(r => r.status === 'sent').length,
+      failed: rowsT.filter(r => r.status === 'failed').length,
+    };
+  }
+
+  // Total facturado: suma los montos "$X" que aparecen en los mensajes de "Entregado".
+  let totalFacturado = 0;
+  for(const r of rows){
+    if(r.event_type === 'delivered' && r.message_body){
+      const match = r.message_body.match(/\$([\d.,]+)/);
+      if(match){
+        const val = parseFloat(match[1].replace(',', ''));
+        if(!isNaN(val)) totalFacturado += val;
+      }
+    }
+  }
+
+  const rangoTexto = (dateFrom || dateTo)
+    ? `${dateFrom || 'inicio'} a ${dateTo || 'hoy'}`
+    : `Últimos ${total} registros`;
+
+  const resumenData = [
+    ['Panel de notificaciones — Resumen'],
+    [],
+    ['Rango', rangoTexto],
+    ['Generado', fmtFullDateTime(new Date().toISOString())],
+    [],
+    ['Total de mensajes', total],
+    ['Enviados', sentCount],
+    ['Fallidos', failedCount],
+    ['Tasa de éxito', successRate],
+    ['Total facturado (Entregado)', '$' + totalFacturado.toFixed(2)],
+    [],
+    ['Por tipo', 'Total', 'Enviados', 'Fallidos'],
+    ...Object.values(byType).map(t => [t.label, t.total, t.sent, t.failed]),
+  ];
+
+  const detalleData = [
+    ['Fecha y hora (Atlanta)', 'Unidad', 'Placa', 'Teléfono', 'Tipo', 'Estado', 'Mensaje', 'Error'],
+    ...rows.map(r => [
+      fmtFullDateTime(r.sent_at),
+      r.vehicle_label ?? '',
+      r.plate ?? '',
+      r.phone ?? '',
+      TYPE_LABELS[r.event_type] ?? (r.event_type ?? ''),
+      r.status === 'sent' ? 'Enviado' : 'Error',
+      r.message_body ?? '',
+      r.error_detail ?? '',
+    ]),
+  ];
+
+  const wb = XLSX.utils.book_new();
+  const wsResumen = XLSX.utils.aoa_to_sheet(resumenData);
+  const wsDetalle = XLSX.utils.aoa_to_sheet(detalleData);
+  wsDetalle['!cols'] = [ {wch:20},{wch:20},{wch:12},{wch:16},{wch:12},{wch:10},{wch:50},{wch:30} ];
+  wsResumen['!cols'] = [ {wch:26},{wch:16},{wch:12},{wch:12} ];
+  XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
+  XLSX.utils.book_append_sheet(wb, wsDetalle, 'Detalle');
+
+  const fileDate = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `panel-notificaciones_${fileDate}.xlsx`);
+}
 
 function subscribeRealtime(){
   supabase.channel('messages_log_changes')
