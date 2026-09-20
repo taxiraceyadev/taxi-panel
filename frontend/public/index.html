@@ -210,6 +210,7 @@
   .theme-popover{
     position:absolute; top:44px; right:0;
     width:250px;
+    max-width:calc(100vw - 40px);
     background:var(--surface-raised);
     border:1px solid var(--border);
     border-radius:10px;
@@ -435,6 +436,7 @@
   .user-popover{
     position:absolute; top:44px; left:0;
     width:290px;
+    max-width:calc(100vw - 40px);
     background:var(--surface-raised);
     border:1px solid var(--border);
     border-radius:10px;
@@ -652,7 +654,9 @@
     main{ padding:18px; }
     .stats-row{ grid-template-columns:1fr; }
     .topbar{ flex-wrap:wrap; row-gap:12px; padding:16px 18px; }
-    .topbar-actions{ width:100%; justify-content:space-between; }
+    .topbar-actions{ width:100%; justify-content:space-between; flex-wrap:wrap; row-gap:10px; }
+    .user-chip-label{ display:none; }
+    .user-chip{ padding:5px; }
     .power-label{ display:none; }
     .date-filter-bar{ align-items:stretch; }
     .toolbar-btn{ min-width:0; flex:1; }
@@ -1195,6 +1199,30 @@ const THEMES = {
     '--ink':'#141414','--surface':'#1C1C1B','--surface-raised':'#242422','--surface-hover':'#2D2D2A',
     '--border':'#3A3A35','--accent':'#E8821E','--accent-dim':'#6E4110','--ok':'#7FCB3D','--bad':'#D6432E',
     '--text':'#EDEAE2','--text-muted':'#A6A296','--text-faint':'#635F55','--accent-glow':'rgba(232,130,30,.55)' }},
+  hev: { name:'Traje HEV (Half-Life)', vars:{
+    '--ink':'#0A0A0A','--surface':'#141414','--surface-raised':'#1C1C1C','--surface-hover':'#242424',
+    '--border':'#333333','--accent':'#FF6A00','--accent-dim':'#7A3300','--ok':'#4CAF50','--bad':'#E8262B',
+    '--text':'#F5F5F0','--text-muted':'#A8A8A0','--text-faint':'#5C5C56','--accent-glow':'rgba(255,106,0,.6)' }},
+  pokemon: { name:'Pokémon', vars:{
+    '--ink':'#101830','--surface':'#17203D','--surface-raised':'#202B4D','--surface-hover':'#2A3760',
+    '--border':'#34406E','--accent':'#FFCB05','--accent-dim':'#7A6300','--ok':'#4FC15A','--bad':'#E3350D',
+    '--text':'#F4F6FC','--text-muted':'#9DA8CC','--text-faint':'#5C6690','--accent-glow':'rgba(255,203,5,.55)' }},
+  amongus: { name:'Among Us', vars:{
+    '--ink':'#0E1420','--surface':'#16202E','--surface-raised':'#1E2B3C','--surface-hover':'#27374A',
+    '--border':'#34495F','--accent':'#EF7D0D','--accent-dim':'#7A3D05','--ok':'#3AC94D','--bad':'#C51111',
+    '--text':'#EAF2F8','--text-muted':'#93A5B8','--text-faint':'#556575','--accent-glow':'rgba(239,125,13,.55)' }},
+  whatsapp: { name:'WhatsApp', vars:{
+    '--ink':'#0B141A','--surface':'#111B21','--surface-raised':'#1F2C33','--surface-hover':'#2A3942',
+    '--border':'#2A3942','--accent':'#25D366','--accent-dim':'#0F6B36','--ok':'#128C7E','--bad':'#E85246',
+    '--text':'#E9EDEF','--text-muted':'#8696A0','--text-faint':'#667781','--accent-glow':'rgba(37,211,102,.5)' }},
+  balatro: { name:'Balatro', vars:{
+    '--ink':'#0C2B1E','--surface':'#123626','--surface-raised':'#184430','--surface-hover':'#1F5239',
+    '--border':'#2A6647','--accent':'#F2C230','--accent-dim':'#7A5F0F','--ok':'#4ADE80','--bad':'#E4432D',
+    '--text':'#F5F0E1','--text-muted':'#B8AE94','--text-faint':'#6E6654','--accent-glow':'rgba(242,194,48,.55)' }},
+  diablo2: { name:'Diablo II', vars:{
+    '--ink':'#170D0D','--surface':'#221313','--surface-raised':'#2C1A1A','--surface-hover':'#382121',
+    '--border':'#4A2828','--accent':'#C9A227','--accent-dim':'#6B540F','--ok':'#4A7FC9','--bad':'#B0201F',
+    '--text':'#EDE1C8','--text-muted':'#A89A84','--text-faint':'#665A4A','--accent-glow':'rgba(201,162,39,.5)' }},
 };
 
 const TAXI_ICON = '<path d="M4 17h16M6 17l1.2-5.5A2 2 0 0 1 9.15 10h5.7a2 2 0 0 1 1.95 1.5L18 17M8 17v2M16 17v2" stroke="#241705" stroke-width="1.8" stroke-linecap="round"/>';
