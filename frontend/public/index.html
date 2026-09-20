@@ -641,6 +641,12 @@
         </span>
       </label>
       <div style="display:flex; gap:8px;">
+        <button class="icon-btn" id="btn-toggle-phones" title="Ocultar teléfonos">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" id="phones-icon">
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
         <div class="theme-picker">
           <button class="icon-btn" id="btn-theme" title="Tema de color">
             <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -917,6 +923,30 @@ const appView = document.getElementById('app-view');
 const loginForm = document.getElementById('login-form');
 const loginError = document.getElementById('login-error');
 
+// ---------------- Ocultar/mostrar teléfonos ----------------
+// Preferencia personal, guardada en el navegador de cada uno (no
+// afecta a los demás ni cambia nada en la base de datos).
+let phonesHidden = false;
+try { phonesHidden = localStorage.getItem('panel-hide-phones') === '1'; } catch {}
+
+const EYE_OPEN = '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>';
+const EYE_CLOSED = '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/><path d="M3 3l18 18" stroke-linecap="round"/>';
+
+function applyPhonesUI(){
+  const icon = document.getElementById('phones-icon');
+  const btn = document.getElementById('btn-toggle-phones');
+  icon.innerHTML = phonesHidden ? EYE_CLOSED : EYE_OPEN;
+  btn.title = phonesHidden ? 'Mostrar teléfonos' : 'Ocultar teléfonos';
+}
+applyPhonesUI();
+
+document.getElementById('btn-toggle-phones').addEventListener('click', () => {
+  phonesHidden = !phonesHidden;
+  try { localStorage.setItem('panel-hide-phones', phonesHidden ? '1' : '0'); } catch {}
+  applyPhonesUI();
+  if(allRows.length) applyFilter(); // vuelve a pintar las filas con el nuevo criterio
+});
+
 function showToast(msg){
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -926,7 +956,10 @@ function showToast(msg){
 
 function fmtPhone(p){
   if(!p) return '—';
-  return p.replace(/\s+/g,'');
+  const clean = p.replace(/\s+/g,'');
+  if(!phonesHidden) return clean;
+  if(clean.length <= 4) return clean;
+  return clean.slice(0,-4).replace(/\d/g,'•') + clean.slice(-4);
 }
 
 function fmtTime(iso){
@@ -1051,7 +1084,7 @@ function openMessageDetail(id){
   const rows = [
     ['Unidad', r.vehicle_label ?? '—'],
     ['Placa', r.plate ?? '—'],
-    ['Teléfono', r.phone ?? '—'],
+    ['Teléfono', fmtPhone(r.phone)],
     ['Tipo', TYPE_LABELS[r.event_type] ?? (r.event_type ?? '—')],
     ['Estado', r.status === 'sent' ? 'Enviado' : 'Error'],
     ['Fecha y hora', fmtFullDateTime(r.sent_at)],
