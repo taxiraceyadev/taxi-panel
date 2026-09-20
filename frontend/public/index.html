@@ -548,6 +548,12 @@
     .cell-time{ order:6; font-size:12px; }
     main{ padding:18px; }
     .stats-row{ grid-template-columns:1fr; }
+    .topbar{ flex-wrap:wrap; row-gap:12px; padding:16px 18px; }
+    .topbar-actions{ width:100%; justify-content:space-between; }
+    .power-label{ display:none; }
+    .date-filter-bar{ align-items:stretch; }
+    .toolbar-btn{ min-width:0; flex:1; }
+    .date-filter-note{ width:100%; }
   }
 
   /* ============================================================
@@ -636,7 +642,7 @@
         <div class="topbar-sub">Unidades en espera → SMS al cliente</div>
       </div>
     </div>
-    <div style="display:flex; align-items:center; gap:14px;">
+    <div class="topbar-actions" style="display:flex; align-items:center; gap:14px;">
       <label class="power-toggle" id="power-toggle" title="Estado del sistema">
         <span class="power-dot" id="power-dot"></span>
         <span class="power-label" id="power-label">Activo</span>
