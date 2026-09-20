@@ -481,6 +481,59 @@
   }
   .team-item-name{ font-size:13.5px; font-weight:500; color:var(--text); }
   .team-item-role{ font-size:11.5px; color:var(--text-muted); margin-top:2px; }
+
+  /* ---------- Chat ---------- */
+  #chat-drawer{ display:flex; flex-direction:column; overflow-y:hidden; }
+  #chat-drawer .drawer-inner{ display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden; padding-bottom:20px; }
+  #chat-list-view{ flex:1; min-height:0; overflow-y:auto; }
+  #chat-thread-view{ display:none; flex-direction:column; flex:1; min-height:0; }
+  #chat-thread-view.open{ display:flex; }
+  .chat-conv-item{ cursor:pointer; transition:background .15s ease; margin:0 -8px; padding:10px 8px; border-radius:8px; }
+  .chat-conv-item:hover{ background:var(--surface-hover); }
+
+  #chat-messages{
+    flex:1; min-height:0; overflow-y:auto;
+    display:flex; flex-direction:column; gap:12px;
+    padding:4px 4px 4px 0;
+  }
+  .chat-bubble-row{ display:flex; gap:8px; align-items:flex-end; }
+  .chat-bubble-row.own{ flex-direction:row-reverse; }
+  .chat-bubble-avatar{ width:26px; height:26px; border-radius:50%; object-fit:cover; flex:none; }
+  .chat-bubble-avatar-fallback{
+    width:26px; height:26px; border-radius:50%; flex:none;
+    background:var(--accent); color:var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:700;
+  }
+  .chat-bubble{
+    max-width:100%;
+    padding:8px 12px;
+    border-radius:14px;
+    font-size:13.5px;
+    line-height:1.45;
+    background:var(--surface-raised);
+    color:var(--text);
+    word-break:break-word;
+    white-space:pre-wrap;
+  }
+  .chat-bubble-row.own .chat-bubble{ background:var(--accent); color:var(--ink); }
+  .chat-bubble-col{ display:flex; flex-direction:column; max-width:78%; }
+  .chat-bubble-row.own .chat-bubble-col{ align-items:flex-end; }
+  .chat-bubble-meta{ font-size:10px; color:var(--text-faint); margin-top:3px; padding:0 2px; }
+
+  #chat-send-form{ display:flex; gap:8px; margin-top:12px; flex:none; }
+  #chat-send-form input{
+    flex:1;
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:9px 12px;
+    border-radius:8px;
+    font-size:13.5px;
+    font-family:inherit;
+    outline:none;
+  }
+  #chat-send-form input:focus{ border-color:var(--accent); }
   .team-item-desc{ font-size:11.5px; color:var(--text-faint); margin-top:3px; }
   .team-item-clickable{ cursor:pointer; margin:0 -6px; padding:10px 6px; border-radius:8px; }
   .team-item-clickable:hover{ background:var(--surface-hover); }
@@ -825,6 +878,11 @@
             <div class="theme-grid" id="theme-grid"></div>
           </div>
         </div>
+        <button class="icon-btn" id="btn-chat" title="Chat">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/>
+          </svg>
+        </button>
         <button class="icon-btn" id="btn-team" title="Equipo">
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -1016,6 +1074,33 @@
       <button type="submit" class="btn btn-primary" style="width:100%;">Enviar SMS de prueba</button>
       <div class="field-set-status" id="test-sms-result" style="margin-top:10px;"></div>
     </form>
+  </div>
+</div>
+
+<!-- ================= CHAT ================= -->
+<div class="scrim" id="chat-scrim"></div>
+<div class="drawer" id="chat-drawer">
+  <div class="drawer-inner">
+    <div class="drawer-head">
+      <h2 id="chat-drawer-title">Chat</h2>
+      <button class="icon-btn" id="btn-close-chat">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div id="chat-list-view">
+      <p class="hint">Chat grupal con todo el equipo, o conversación privada con una sola persona.</p>
+      <div id="chat-conversations-list"></div>
+    </div>
+
+    <div id="chat-thread-view">
+      <button type="button" class="btn btn-ghost btn-small" id="btn-chat-back" style="margin-bottom:10px;">← Volver</button>
+      <div id="chat-messages"></div>
+      <form id="chat-send-form">
+        <input type="text" id="chat-input" placeholder="Escribí un mensaje..." autocomplete="off" />
+        <button type="submit" class="btn btn-primary btn-small">Enviar</button>
+      </form>
+    </div>
   </div>
 </div>
 
@@ -1716,6 +1801,7 @@ let currentUser = { name: '', email: '', role: 'viewer', avatar: '', phone: '', 
 async function loadRole(){
   const { data: { session } } = await supabase.auth.getSession();
   if(!session) return;
+  myUserId = session.user.id;
   const { data, error } = await supabase.from('profiles').select('role, display_name, avatar_url, phone, description').eq('id', session.user.id).single();
   isAdmin = !error && data?.role === 'admin';
   currentUser = {
@@ -1865,6 +1951,169 @@ document.getElementById('avatar-file-input').addEventListener('change', async (e
   renderUserChip();
   showToast('Foto de perfil actualizada.');
 });
+
+// ---------------- Chat (grupal + privados 1 a 1) ----------------
+let myUserId = null;
+let activeConversation = null; // null | 'group' | <uuid del otro usuario>
+let chatChannel = null;
+let lastTeamData = [];
+
+const chatDrawer = document.getElementById('chat-drawer');
+const chatScrim = document.getElementById('chat-scrim');
+
+async function openChat(){
+  chatDrawer.classList.add('open');
+  chatScrim.classList.add('open');
+  await showChatList();
+  subscribeChat();
+}
+function closeChatDrawer(){
+  chatDrawer.classList.remove('open');
+  chatScrim.classList.remove('open');
+  if(chatChannel){ supabase.removeChannel(chatChannel); chatChannel = null; }
+}
+document.getElementById('btn-chat').addEventListener('click', openChat);
+document.getElementById('btn-close-chat').addEventListener('click', closeChatDrawer);
+chatScrim.addEventListener('click', closeChatDrawer);
+
+async function showChatList(){
+  activeConversation = null;
+  document.getElementById('chat-thread-view').classList.remove('open');
+  document.getElementById('chat-list-view').style.display = 'block';
+  document.getElementById('chat-drawer-title').textContent = 'Chat';
+
+  const list = document.getElementById('chat-conversations-list');
+  list.innerHTML = `<div class="empty">Cargando...</div>`;
+  const { data, error } = await supabase.rpc('list_team');
+  if(error){
+    list.innerHTML = `<div class="empty">No se pudo cargar la lista.</div>`;
+    return;
+  }
+  lastTeamData = data ?? [];
+  const others = lastTeamData.filter(u => u.id !== myUserId);
+
+  const groupItem = `
+    <div class="team-item chat-conv-item" data-conv="group">
+      <span class="team-avatar-fallback">💬</span>
+      <div><div class="team-item-name">Equipo (grupal)</div><div class="team-item-role">Todos pueden ver</div></div>
+    </div>`;
+  const otherItems = others.map(u => {
+    const name = u.display_name || 'Sin nombre';
+    const initial = name.trim().charAt(0).toUpperCase();
+    const avatar = u.avatar_url
+      ? `<img class="team-avatar" src="${u.avatar_url}" alt="" />`
+      : `<span class="team-avatar-fallback">${initial}</span>`;
+    return `
+      <div class="team-item chat-conv-item" data-conv="${u.id}">
+        ${avatar}
+        <div><div class="team-item-name">${name}</div><div class="team-item-role">Privado</div></div>
+      </div>`;
+  }).join('');
+
+  list.innerHTML = groupItem + otherItems;
+}
+
+document.getElementById('chat-conversations-list').addEventListener('click', (e) => {
+  const item = e.target.closest('.chat-conv-item');
+  if(!item) return;
+  openConversation(item.dataset.conv);
+});
+document.getElementById('btn-chat-back').addEventListener('click', showChatList);
+
+function teamDisplayName(id){
+  return lastTeamData.find(u => u.id === id)?.display_name || 'Conversación';
+}
+
+async function openConversation(conv){
+  activeConversation = conv;
+  document.getElementById('chat-list-view').style.display = 'none';
+  document.getElementById('chat-thread-view').classList.add('open');
+  document.getElementById('chat-drawer-title').textContent = conv === 'group' ? 'Equipo' : teamDisplayName(conv);
+  await loadMessages();
+}
+
+async function loadMessages(){
+  const box = document.getElementById('chat-messages');
+  box.innerHTML = `<div class="empty">Cargando...</div>`;
+
+  let query = supabase.from('chat_messages').select('*').order('created_at', { ascending:true }).limit(300);
+  if(activeConversation === 'group'){
+    query = query.is('recipient_id', null);
+  } else {
+    query = query.or(
+      `and(sender_id.eq.${myUserId},recipient_id.eq.${activeConversation}),and(sender_id.eq.${activeConversation},recipient_id.eq.${myUserId})`
+    );
+  }
+  const { data, error } = await query;
+  if(error){
+    box.innerHTML = `<div class="empty">No se pudo cargar el chat.</div>`;
+    return;
+  }
+  renderMessages(data ?? []);
+}
+
+function chatBubbleHTML(m){
+  const isOwn = m.sender_id === myUserId;
+  const sender = lastTeamData.find(u => u.id === m.sender_id);
+  const name = isOwn ? 'Vos' : (sender?.display_name || 'Alguien');
+  const initial = name.trim().charAt(0).toUpperCase();
+  const avatar = sender?.avatar_url
+    ? `<img class="chat-bubble-avatar" src="${sender.avatar_url}" alt="" />`
+    : `<span class="chat-bubble-avatar-fallback">${initial}</span>`;
+  return `
+    <div class="chat-bubble-row ${isOwn ? 'own' : ''}">
+      ${avatar}
+      <div class="chat-bubble-col">
+        <div class="chat-bubble">${m.body}</div>
+        <div class="chat-bubble-meta">${isOwn ? '' : name + ' · '}${fmtTime(m.created_at)}</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderMessages(messages){
+  const box = document.getElementById('chat-messages');
+  if(!messages.length){
+    box.innerHTML = `<div class="empty">Todavía no hay mensajes acá. ¡Mandá el primero!</div>`;
+    return;
+  }
+  box.innerHTML = messages.map(chatBubbleHTML).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+document.getElementById('chat-send-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if(!activeConversation) return;
+  const input = document.getElementById('chat-input');
+  const body = input.value.trim();
+  if(!body) return;
+  input.value = '';
+  const { error } = await supabase.from('chat_messages').insert({
+    sender_id: myUserId,
+    recipient_id: activeConversation === 'group' ? null : activeConversation,
+    body,
+  });
+  if(error) showToast('No se pudo enviar el mensaje.');
+});
+
+function subscribeChat(){
+  if(chatChannel) return;
+  chatChannel = supabase.channel('chat_messages_live')
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'chat_messages' }, (payload) => {
+      const m = payload.new;
+      const belongsToActive = activeConversation === 'group'
+        ? m.recipient_id === null
+        : activeConversation
+          ? ((m.sender_id === myUserId && m.recipient_id === activeConversation) || (m.sender_id === activeConversation && m.recipient_id === myUserId))
+          : false;
+      if(!belongsToActive) return;
+      const box = document.getElementById('chat-messages');
+      if(box.querySelector('.empty')) box.innerHTML = '';
+      box.insertAdjacentHTML('beforeend', chatBubbleHTML(m));
+      box.scrollTop = box.scrollHeight;
+    })
+    .subscribe();
+}
 
 // ---------------- Equipo ----------------
 const teamDrawer = document.getElementById('team-drawer');
