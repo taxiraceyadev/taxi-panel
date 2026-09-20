@@ -1384,6 +1384,7 @@ function applyRoleUI(){
   document.getElementById('power-switch').style.display = isAdmin ? 'inline-block' : 'none';
   document.getElementById('power-dot').style.display = isAdmin ? 'none' : 'inline-block';
   document.getElementById('power-checkbox').disabled = !isAdmin;
+  document.getElementById('btn-export-excel').style.display = isAdmin ? 'inline-flex' : 'none';
 }
 
 async function loadPublicStatus(){
