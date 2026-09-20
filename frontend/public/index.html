@@ -479,6 +479,9 @@
   }
   .team-item-name{ font-size:13.5px; font-weight:500; color:var(--text); }
   .team-item-role{ font-size:11.5px; color:var(--text-muted); margin-top:2px; }
+  .team-item-desc{ font-size:11.5px; color:var(--text-faint); margin-top:3px; }
+  .team-item-clickable{ cursor:pointer; margin:0 -6px; padding:10px 6px; border-radius:8px; }
+  .team-item-clickable:hover{ background:var(--surface-hover); }
 
   /* ---------- Select (formulario de SMS de prueba) ---------- */
   select{
@@ -763,13 +766,19 @@
               <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" />
             </div>
           </div>
-          <div class="field" style="margin-bottom:10px;">
+          <div class="field" style="margin-bottom:8px;">
             <label for="user-pop-name-input" style="font-size:11px;">Nombre</label>
-            <div style="display:flex; gap:6px;">
-              <input type="text" id="user-pop-name-input" placeholder="Tu nombre" style="flex:1;" />
-              <button type="button" class="btn btn-ghost btn-small" id="btn-save-name">Guardar</button>
-            </div>
+            <input type="text" id="user-pop-name-input" placeholder="Tu nombre" />
           </div>
+          <div class="field" style="margin-bottom:8px;">
+            <label for="user-pop-phone-input" style="font-size:11px;">Teléfono de contacto</label>
+            <input type="text" id="user-pop-phone-input" placeholder="+1..." />
+          </div>
+          <div class="field" style="margin-bottom:10px;">
+            <label for="user-pop-desc-input" style="font-size:11px;">Descripción</label>
+            <textarea id="user-pop-desc-input" placeholder="Un par de líneas sobre vos..." rows="2" style="width:100%; resize:vertical; background:var(--surface); border:1px solid var(--border); color:var(--text); padding:9px 11px; border-radius:8px; font-size:13px; font-family:inherit;"></textarea>
+          </div>
+          <button type="button" class="btn btn-primary btn-small" id="btn-save-profile" style="width:100%; margin-bottom:12px;">Guardar perfil</button>
           <div class="msg-detail-row">
             <span class="msg-detail-label">Correo</span>
             <span class="msg-detail-value" id="user-pop-email">—</span>
@@ -1017,6 +1026,7 @@
       </button>
     </div>
     <p class="hint">Todas las personas con acceso al panel.</p>
+    <button type="button" class="btn btn-primary btn-small" id="btn-new-user" style="width:100%; margin-bottom:14px; display:none;">+ Nuevo usuario</button>
     <div id="team-list"></div>
   </div>
 </div>
@@ -1046,6 +1056,87 @@
     </button>
   </div>
   <div class="msg-modal-body" id="msg-modal-body"></div>
+</div>
+
+<!-- ================= NUEVO USUARIO (admin) ================= -->
+<div class="scrim" id="newuser-scrim"></div>
+<div class="msg-modal" id="newuser-modal">
+  <div class="msg-modal-head">
+    <h2>Nuevo usuario</h2>
+    <button class="icon-btn" id="btn-close-newuser">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="msg-modal-body">
+    <form id="new-user-form">
+      <div class="field">
+        <label for="nu-email">Correo</label>
+        <input type="email" id="nu-email" required />
+      </div>
+      <div class="field">
+        <label for="nu-password">Contraseña</label>
+        <input type="text" id="nu-password" placeholder="Mínimo 6 caracteres" required />
+      </div>
+      <div class="field">
+        <label for="nu-name">Nombre</label>
+        <input type="text" id="nu-name" />
+      </div>
+      <div class="field">
+        <label for="nu-role">Rol</label>
+        <select id="nu-role">
+          <option value="viewer">Solo lectura (viewer)</option>
+          <option value="admin">Administrador</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="nu-phone">Teléfono de contacto</label>
+        <input type="text" id="nu-phone" placeholder="+1..." />
+      </div>
+      <div class="field">
+        <label for="nu-desc">Descripción</label>
+        <textarea id="nu-desc" rows="2" style="width:100%; resize:vertical; background:var(--surface); border:1px solid var(--border); color:var(--text); padding:9px 11px; border-radius:8px; font-size:13px; font-family:inherit;"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;">Crear usuario</button>
+      <div class="field-set-status" id="new-user-result" style="margin-top:10px;"></div>
+    </form>
+  </div>
+</div>
+
+<!-- ================= EDITAR USUARIO (admin) ================= -->
+<div class="scrim" id="edituser-scrim"></div>
+<div class="msg-modal" id="edituser-modal">
+  <div class="msg-modal-head">
+    <h2>Editar usuario</h2>
+    <button class="icon-btn" id="btn-close-edituser">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="msg-modal-body">
+    <form id="edit-user-form">
+      <input type="hidden" id="eu-id" />
+      <div class="field">
+        <label for="eu-name">Nombre</label>
+        <input type="text" id="eu-name" />
+      </div>
+      <div class="field">
+        <label for="eu-role">Rol</label>
+        <select id="eu-role">
+          <option value="viewer">Solo lectura (viewer)</option>
+          <option value="admin">Administrador</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="eu-phone">Teléfono de contacto</label>
+        <input type="text" id="eu-phone" placeholder="+1..." />
+      </div>
+      <div class="field">
+        <label for="eu-desc">Descripción</label>
+        <textarea id="eu-desc" rows="2" style="width:100%; resize:vertical; background:var(--surface); border:1px solid var(--border); color:var(--text); padding:9px 11px; border-radius:8px; font-size:13px; font-family:inherit;"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;">Guardar cambios</button>
+      <div class="field-set-status" id="edit-user-result" style="margin-top:10px;"></div>
+    </form>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1592,18 +1683,20 @@ function subscribeRealtime(){
 
 // ---------------- Auth y roles ----------------
 let isAdmin = false;
-let currentUser = { name: '', email: '', role: 'viewer', avatar: '' };
+let currentUser = { name: '', email: '', role: 'viewer', avatar: '', phone: '', description: '' };
 
 async function loadRole(){
   const { data: { session } } = await supabase.auth.getSession();
   if(!session) return;
-  const { data, error } = await supabase.from('profiles').select('role, display_name, avatar_url').eq('id', session.user.id).single();
+  const { data, error } = await supabase.from('profiles').select('role, display_name, avatar_url, phone, description').eq('id', session.user.id).single();
   isAdmin = !error && data?.role === 'admin';
   currentUser = {
     name: data?.display_name || '',
     email: session.user.email || '',
     role: isAdmin ? 'admin' : 'viewer',
     avatar: data?.avatar_url || '',
+    phone: data?.phone || '',
+    description: data?.description || '',
   };
   applyRoleUI();
   renderUserChip();
@@ -1682,6 +1775,8 @@ document.getElementById('btn-logout-pop').addEventListener('click', async () => 
 document.getElementById('btn-user-chip').addEventListener('click', (e) => {
   e.stopPropagation();
   document.getElementById('user-pop-name-input').value = currentUser.name || '';
+  document.getElementById('user-pop-phone-input').value = currentUser.phone || '';
+  document.getElementById('user-pop-desc-input').value = currentUser.description || '';
   document.getElementById('user-pop-email').textContent = currentUser.email || '—';
   document.getElementById('user-pop-role').textContent = currentUser.role === 'admin' ? 'Administrador' : 'Solo lectura';
   document.getElementById('user-popover').classList.toggle('open');
@@ -1693,15 +1788,23 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// ---------------- Guardar nombre propio ----------------
-document.getElementById('btn-save-name').addEventListener('click', async () => {
+// ---------------- Guardar mi perfil (nombre, teléfono, descripción) ----------------
+document.getElementById('btn-save-profile').addEventListener('click', async () => {
   const newName = document.getElementById('user-pop-name-input').value.trim();
+  const newPhone = document.getElementById('user-pop-phone-input').value.trim();
+  const newDesc = document.getElementById('user-pop-desc-input').value.trim();
   if(!newName){ showToast('Escribí un nombre primero.'); return; }
-  const { error } = await supabase.rpc('update_my_profile', { p_display_name: newName });
-  if(error){ showToast('No se pudo guardar el nombre.'); return; }
+  const { error } = await supabase.rpc('update_my_profile', {
+    p_display_name: newName,
+    p_phone: newPhone,
+    p_description: newDesc,
+  });
+  if(error){ showToast('No se pudo guardar el perfil.'); return; }
   currentUser.name = newName;
+  currentUser.phone = newPhone;
+  currentUser.description = newDesc;
   renderUserChip();
-  showToast('Nombre actualizado.');
+  showToast('Perfil actualizado.');
 });
 
 // ---------------- Cambiar foto de perfil ----------------
@@ -1743,6 +1846,7 @@ function openTeam(){
   document.getElementById('user-popover').classList.remove('open');
   teamDrawer.classList.add('open');
   teamScrim.classList.add('open');
+  document.getElementById('btn-new-user').style.display = isAdmin ? 'block' : 'none';
   loadTeam();
 }
 function closeTeam(){
@@ -1754,6 +1858,8 @@ document.getElementById('btn-open-team').addEventListener('click', openTeam);
 document.getElementById('btn-close-team').addEventListener('click', closeTeam);
 teamScrim.addEventListener('click', closeTeam);
 
+let teamData = [];
+
 async function loadTeam(){
   const list = document.getElementById('team-list');
   list.innerHTML = `<div class="empty">Cargando...</div>`;
@@ -1762,27 +1868,124 @@ async function loadTeam(){
     list.innerHTML = `<div class="empty">No se pudo cargar el equipo.</div>`;
     return;
   }
-  if(!data?.length){
+  teamData = data ?? [];
+  if(!teamData.length){
     list.innerHTML = `<div class="empty">No hay usuarios todavía.</div>`;
     return;
   }
-  list.innerHTML = data.map(u => {
+  list.innerHTML = teamData.map(u => {
     const name = u.display_name || 'Sin nombre';
     const initial = name.trim().charAt(0).toUpperCase();
     const avatar = u.avatar_url
       ? `<img class="team-avatar" src="${u.avatar_url}" alt="" />`
       : `<span class="team-avatar-fallback">${initial}</span>`;
     return `
-      <div class="team-item">
+      <div class="team-item${isAdmin ? ' team-item-clickable' : ''}" data-id="${u.id}">
         ${avatar}
-        <div>
+        <div style="flex:1; min-width:0;">
           <div class="team-item-name">${name}</div>
-          <div class="team-item-role">${u.role === 'admin' ? 'Administrador' : 'Solo lectura'}</div>
+          <div class="team-item-role">${u.role === 'admin' ? 'Administrador' : 'Solo lectura'}${u.phone ? ' · ' + u.phone : ''}</div>
+          ${u.description ? `<div class="team-item-desc">${u.description}</div>` : ''}
         </div>
       </div>
     `;
   }).join('');
 }
+
+document.getElementById('team-list').addEventListener('click', (e) => {
+  if(!isAdmin) return;
+  const item = e.target.closest('.team-item-clickable');
+  if(!item) return;
+  const user = teamData.find(u => String(u.id) === item.dataset.id);
+  if(!user) return;
+  document.getElementById('eu-id').value = user.id;
+  document.getElementById('eu-name').value = user.display_name || '';
+  document.getElementById('eu-role').value = user.role;
+  document.getElementById('eu-phone').value = user.phone || '';
+  document.getElementById('eu-desc').value = user.description || '';
+  document.getElementById('edit-user-result').textContent = '';
+  document.getElementById('edituser-modal').classList.add('open');
+  document.getElementById('edituser-scrim').classList.add('open');
+});
+
+document.getElementById('btn-close-edituser').addEventListener('click', closeEditUser);
+document.getElementById('edituser-scrim').addEventListener('click', closeEditUser);
+function closeEditUser(){
+  document.getElementById('edituser-modal').classList.remove('open');
+  document.getElementById('edituser-scrim').classList.remove('open');
+}
+
+document.getElementById('edit-user-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const resultEl = document.getElementById('edit-user-result');
+  resultEl.textContent = 'Guardando...';
+  const { error } = await supabase.rpc('admin_update_profile', {
+    p_user_id: document.getElementById('eu-id').value,
+    p_role: document.getElementById('eu-role').value,
+    p_display_name: document.getElementById('eu-name').value.trim(),
+    p_phone: document.getElementById('eu-phone').value.trim(),
+    p_description: document.getElementById('eu-desc').value.trim(),
+  });
+  if(error){
+    resultEl.textContent = 'No se pudo guardar: ' + error.message;
+    return;
+  }
+  showToast('Usuario actualizado.');
+  closeEditUser();
+  loadTeam();
+});
+
+// ---------------- Crear usuario (admin) ----------------
+document.getElementById('btn-new-user').addEventListener('click', () => {
+  document.getElementById('new-user-form').reset();
+  document.getElementById('new-user-result').textContent = '';
+  document.getElementById('newuser-modal').classList.add('open');
+  document.getElementById('newuser-scrim').classList.add('open');
+});
+document.getElementById('btn-close-newuser').addEventListener('click', closeNewUser);
+document.getElementById('newuser-scrim').addEventListener('click', closeNewUser);
+function closeNewUser(){
+  document.getElementById('newuser-modal').classList.remove('open');
+  document.getElementById('newuser-scrim').classList.remove('open');
+}
+
+document.getElementById('new-user-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const resultEl = document.getElementById('new-user-result');
+  resultEl.textContent = 'Creando...';
+
+  const payload = {
+    email: document.getElementById('nu-email').value.trim(),
+    password: document.getElementById('nu-password').value,
+    display_name: document.getElementById('nu-name').value.trim(),
+    role: document.getElementById('nu-role').value,
+    phone: document.getElementById('nu-phone').value.trim(),
+    description: document.getElementById('nu-desc').value.trim(),
+  };
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-create-user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const result = await res.json();
+    if(result.ok){
+      resultEl.textContent = 'Usuario creado correctamente.';
+      showToast('Usuario creado.');
+      closeNewUser();
+      loadTeam();
+    } else {
+      resultEl.textContent = 'No se pudo crear: ' + (result.reason ?? 'error desconocido');
+    }
+  } catch (err) {
+    resultEl.textContent = 'Error de conexión al crear el usuario.';
+  }
+});
 
 // ---------------- Settings drawer ----------------
 const drawer = document.getElementById('drawer');
