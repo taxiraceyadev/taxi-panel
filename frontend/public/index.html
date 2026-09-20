@@ -423,6 +423,8 @@
     transition:all .15s ease;
   }
   .user-chip:hover{ border-color:var(--text-faint); background:var(--surface-hover); }
+  .user-chip-avatar-wrap{ position:relative; width:24px; height:24px; flex:none; }
+  .user-chip-avatar-img{ width:24px; height:24px; border-radius:50%; object-fit:cover; display:block; }
   .user-chip-avatar{
     width:24px; height:24px; border-radius:50%;
     background:var(--accent); color:var(--ink);
@@ -432,17 +434,51 @@
   .user-chip-label{ font-size:12.5px; font-weight:500; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .user-popover{
     position:absolute; top:44px; left:0;
-    width:240px;
+    width:290px;
     background:var(--surface-raised);
     border:1px solid var(--border);
     border-radius:10px;
-    padding:14px 16px;
+    padding:16px;
     box-shadow:0 16px 32px -10px rgba(0,0,0,.55);
     opacity:0; pointer-events:none; transform:translateY(-6px);
     transition:opacity .15s ease, transform .15s ease;
     z-index:25;
   }
   .user-popover.open{ opacity:1; pointer-events:auto; transform:translateY(0); }
+
+  .profile-avatar-row{ display:flex; justify-content:center; margin-bottom:14px; }
+  .profile-avatar-wrap{ position:relative; width:64px; height:64px; }
+  .profile-avatar{
+    width:64px; height:64px; border-radius:50%; object-fit:cover;
+    border:1px solid var(--border);
+  }
+  .profile-avatar-fallback{
+    width:64px; height:64px; border-radius:50%;
+    background:var(--accent); color:var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px; font-weight:700;
+  }
+  .avatar-edit-btn{
+    position:absolute; bottom:-2px; right:-2px;
+    width:22px; height:22px; border-radius:50%;
+    background:var(--surface-raised); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; color:var(--text-muted);
+    transition:color .15s ease;
+  }
+  .avatar-edit-btn:hover{ color:var(--text); }
+
+  .team-item{ display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); }
+  .team-item:last-child{ border-bottom:none; }
+  .team-avatar{ width:36px; height:36px; border-radius:50%; object-fit:cover; flex:none; border:1px solid var(--border); }
+  .team-avatar-fallback{
+    width:36px; height:36px; border-radius:50%; flex:none;
+    background:var(--accent); color:var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:14px;
+  }
+  .team-item-name{ font-size:13.5px; font-weight:500; color:var(--text); }
+  .team-item-role{ font-size:11.5px; color:var(--text-muted); margin-top:2px; }
 
   /* ---------- Select (formulario de SMS de prueba) ---------- */
   select{
@@ -710,13 +746,29 @@
     <div class="topbar-actions" style="display:flex; align-items:center; gap:14px;">
       <div class="user-chip-wrap">
         <button type="button" class="user-chip" id="btn-user-chip" title="Tu perfil">
-          <span class="user-chip-avatar" id="user-chip-initial">?</span>
+          <span class="user-chip-avatar-wrap">
+            <img id="chip-avatar-img" class="user-chip-avatar-img" src="" alt="" style="display:none;" />
+            <span class="user-chip-avatar" id="user-chip-initial">?</span>
+          </span>
           <span class="user-chip-label" id="user-chip-label">Usuario</span>
         </button>
         <div class="user-popover" id="user-popover">
-          <div class="msg-detail-row">
-            <span class="msg-detail-label">Nombre</span>
-            <span class="msg-detail-value" id="user-pop-name">—</span>
+          <div class="profile-avatar-row">
+            <div class="profile-avatar-wrap">
+              <img id="user-pop-avatar" class="profile-avatar" src="" alt="" style="display:none;" />
+              <span class="profile-avatar-fallback" id="user-pop-avatar-fallback">?</span>
+              <button type="button" class="avatar-edit-btn" id="btn-change-avatar" title="Cambiar foto">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"/><circle cx="12" cy="13" r="4"/></svg>
+              </button>
+              <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" />
+            </div>
+          </div>
+          <div class="field" style="margin-bottom:10px;">
+            <label for="user-pop-name-input" style="font-size:11px;">Nombre</label>
+            <div style="display:flex; gap:6px;">
+              <input type="text" id="user-pop-name-input" placeholder="Tu nombre" style="flex:1;" />
+              <button type="button" class="btn btn-ghost btn-small" id="btn-save-name">Guardar</button>
+            </div>
           </div>
           <div class="msg-detail-row">
             <span class="msg-detail-label">Correo</span>
@@ -726,7 +778,8 @@
             <span class="msg-detail-label">Rol</span>
             <span class="msg-detail-value" id="user-pop-role">—</span>
           </div>
-          <button type="button" class="btn btn-ghost btn-small" id="btn-logout-pop" style="width:100%; margin-top:12px;">Cerrar sesión</button>
+          <button type="button" class="btn btn-ghost btn-small" id="btn-open-team" style="width:100%; margin-top:12px;">Ver equipo</button>
+          <button type="button" class="btn btn-ghost btn-small" id="btn-logout-pop" style="width:100%; margin-top:8px;">Cerrar sesión</button>
         </div>
       </div>
       <label class="power-toggle" id="power-toggle" title="Estado del sistema">
@@ -759,6 +812,14 @@
             <div class="theme-grid" id="theme-grid"></div>
           </div>
         </div>
+        <button class="icon-btn" id="btn-team" title="Equipo">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </button>
         <button class="icon-btn" id="btn-history" title="Historial de acciones">
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8">
             <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/>
@@ -942,6 +1003,21 @@
       <button type="submit" class="btn btn-primary" style="width:100%;">Enviar SMS de prueba</button>
       <div class="field-set-status" id="test-sms-result" style="margin-top:10px;"></div>
     </form>
+  </div>
+</div>
+
+<!-- ================= EQUIPO ================= -->
+<div class="scrim" id="team-scrim"></div>
+<div class="drawer" id="team-drawer">
+  <div class="drawer-inner">
+    <div class="drawer-head">
+      <h2>Equipo</h2>
+      <button class="icon-btn" id="btn-close-team">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p class="hint">Todas las personas con acceso al panel.</p>
+    <div id="team-list"></div>
   </div>
 </div>
 
@@ -1516,17 +1592,18 @@ function subscribeRealtime(){
 
 // ---------------- Auth y roles ----------------
 let isAdmin = false;
-let currentUser = { name: '', email: '', role: 'viewer' };
+let currentUser = { name: '', email: '', role: 'viewer', avatar: '' };
 
 async function loadRole(){
   const { data: { session } } = await supabase.auth.getSession();
   if(!session) return;
-  const { data, error } = await supabase.from('profiles').select('role, display_name').eq('id', session.user.id).single();
+  const { data, error } = await supabase.from('profiles').select('role, display_name, avatar_url').eq('id', session.user.id).single();
   isAdmin = !error && data?.role === 'admin';
   currentUser = {
     name: data?.display_name || '',
     email: session.user.email || '',
     role: isAdmin ? 'admin' : 'viewer',
+    avatar: data?.avatar_url || '',
   };
   applyRoleUI();
   renderUserChip();
@@ -1535,8 +1612,22 @@ async function loadRole(){
 function renderUserChip(){
   const label = currentUser.name || currentUser.email || 'Usuario';
   const initial = (currentUser.name || currentUser.email || '?').trim().charAt(0).toUpperCase();
-  document.getElementById('user-chip-initial').textContent = initial;
   document.getElementById('user-chip-label').textContent = label;
+
+  const hasAvatar = !!currentUser.avatar;
+  const chipImg = document.getElementById('chip-avatar-img');
+  const chipInitial = document.getElementById('user-chip-initial');
+  chipImg.src = currentUser.avatar || '';
+  chipImg.style.display = hasAvatar ? 'block' : 'none';
+  chipInitial.style.display = hasAvatar ? 'none' : 'flex';
+  chipInitial.textContent = initial;
+
+  const popImg = document.getElementById('user-pop-avatar');
+  const popFallback = document.getElementById('user-pop-avatar-fallback');
+  popImg.src = currentUser.avatar || '';
+  popImg.style.display = hasAvatar ? 'block' : 'none';
+  popFallback.style.display = hasAvatar ? 'none' : 'flex';
+  popFallback.textContent = initial;
 }
 
 function applyRoleUI(){
@@ -1590,7 +1681,7 @@ document.getElementById('btn-logout-pop').addEventListener('click', async () => 
 // ---------------- Chip de usuario ----------------
 document.getElementById('btn-user-chip').addEventListener('click', (e) => {
   e.stopPropagation();
-  document.getElementById('user-pop-name').textContent = currentUser.name || '(sin nombre cargado)';
+  document.getElementById('user-pop-name-input').value = currentUser.name || '';
   document.getElementById('user-pop-email').textContent = currentUser.email || '—';
   document.getElementById('user-pop-role').textContent = currentUser.role === 'admin' ? 'Administrador' : 'Solo lectura';
   document.getElementById('user-popover').classList.toggle('open');
@@ -1601,6 +1692,97 @@ document.addEventListener('click', (e) => {
     document.getElementById('user-popover').classList.remove('open');
   }
 });
+
+// ---------------- Guardar nombre propio ----------------
+document.getElementById('btn-save-name').addEventListener('click', async () => {
+  const newName = document.getElementById('user-pop-name-input').value.trim();
+  if(!newName){ showToast('Escribí un nombre primero.'); return; }
+  const { error } = await supabase.rpc('update_my_profile', { p_display_name: newName });
+  if(error){ showToast('No se pudo guardar el nombre.'); return; }
+  currentUser.name = newName;
+  renderUserChip();
+  showToast('Nombre actualizado.');
+});
+
+// ---------------- Cambiar foto de perfil ----------------
+document.getElementById('btn-change-avatar').addEventListener('click', () => {
+  document.getElementById('avatar-file-input').click();
+});
+document.getElementById('avatar-file-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){ showToast('Elegí un archivo de imagen.'); return; }
+  if(file.size > 3 * 1024 * 1024){ showToast('La imagen no puede pesar más de 3MB.'); return; }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const path = `${session.user.id}/avatar.${ext}`;
+
+  const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file, {
+    upsert: true,
+    contentType: file.type,
+  });
+  if(uploadError){ showToast('No se pudo subir la foto.'); return; }
+
+  const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
+  const publicUrl = `${pub.publicUrl}?t=${Date.now()}`; // evita que quede cacheada la vieja
+
+  const { error: rpcError } = await supabase.rpc('update_my_profile', { p_avatar_url: publicUrl });
+  if(rpcError){ showToast('No se pudo guardar la foto.'); return; }
+
+  currentUser.avatar = publicUrl;
+  renderUserChip();
+  showToast('Foto de perfil actualizada.');
+});
+
+// ---------------- Equipo ----------------
+const teamDrawer = document.getElementById('team-drawer');
+const teamScrim = document.getElementById('team-scrim');
+
+function openTeam(){
+  document.getElementById('user-popover').classList.remove('open');
+  teamDrawer.classList.add('open');
+  teamScrim.classList.add('open');
+  loadTeam();
+}
+function closeTeam(){
+  teamDrawer.classList.remove('open');
+  teamScrim.classList.remove('open');
+}
+document.getElementById('btn-team').addEventListener('click', openTeam);
+document.getElementById('btn-open-team').addEventListener('click', openTeam);
+document.getElementById('btn-close-team').addEventListener('click', closeTeam);
+teamScrim.addEventListener('click', closeTeam);
+
+async function loadTeam(){
+  const list = document.getElementById('team-list');
+  list.innerHTML = `<div class="empty">Cargando...</div>`;
+  const { data, error } = await supabase.rpc('list_team');
+  if(error){
+    list.innerHTML = `<div class="empty">No se pudo cargar el equipo.</div>`;
+    return;
+  }
+  if(!data?.length){
+    list.innerHTML = `<div class="empty">No hay usuarios todavía.</div>`;
+    return;
+  }
+  list.innerHTML = data.map(u => {
+    const name = u.display_name || 'Sin nombre';
+    const initial = name.trim().charAt(0).toUpperCase();
+    const avatar = u.avatar_url
+      ? `<img class="team-avatar" src="${u.avatar_url}" alt="" />`
+      : `<span class="team-avatar-fallback">${initial}</span>`;
+    return `
+      <div class="team-item">
+        ${avatar}
+        <div>
+          <div class="team-item-name">${name}</div>
+          <div class="team-item-role">${u.role === 'admin' ? 'Administrador' : 'Solo lectura'}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
 
 // ---------------- Settings drawer ----------------
 const drawer = document.getElementById('drawer');
