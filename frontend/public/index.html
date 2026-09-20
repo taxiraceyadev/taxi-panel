@@ -325,6 +325,25 @@
   .btn-small{ padding:6px 11px; font-size:12px; font-weight:500; }
   .date-filter-note{ color:var(--text-faint); font-size:11.5px; }
 
+  #load-more-wrap{
+    display:flex;
+    justify-content:center;
+    margin-top:16px;
+  }
+  .load-more-btn{
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--text-muted);
+    padding:9px 20px;
+    border-radius:8px;
+    font-size:13px;
+    font-family:inherit;
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  .load-more-btn:hover{ color:var(--text); border-color:var(--text-faint); background:var(--surface-hover); }
+  .load-more-btn:disabled{ opacity:.5; cursor:default; }
+
   .feed{
     border:1px solid var(--border);
     border-radius:10px;
@@ -637,6 +656,7 @@
       </div>
       <div id="feed-body"></div>
     </div>
+    <div id="load-more-wrap"></div>
   </main>
 </div>
 
@@ -972,17 +992,24 @@ function atlantaDayEndUTC(dateStr){
   return new Date(atlantaDayStartUTC(dateStr).getTime() + 24 * 60 * 60 * 1000 - 1);
 }
 
+const PAGE_SIZE = 100;
+let loadedCount = PAGE_SIZE;
+let totalMatching = 0;
+
 async function loadFeed(){
   const dateFrom = document.getElementById('filter-date-from').value;
   const dateTo = document.getElementById('filter-date-to').value;
   const hasDateFilter = !!(dateFrom || dateTo);
 
-  let query = supabase.from('messages_log').select('*').order('sent_at', { ascending:false });
+  let query = supabase
+    .from('messages_log')
+    .select('*', { count: 'exact' })
+    .order('sent_at', { ascending:false });
   if(dateFrom){ query = query.gte('sent_at', atlantaDayStartUTC(dateFrom).toISOString()); }
   if(dateTo){ query = query.lte('sent_at', atlantaDayEndUTC(dateTo).toISOString()); }
-  query = query.limit(hasDateFilter ? 1000 : 100);
+  query = query.range(0, loadedCount - 1);
 
-  const { data: rows, error } = await query;
+  const { data: rows, count, error } = await query;
 
   const { count: onHoldCount } = await supabase
     .from('vehicles_on_hold')
@@ -991,6 +1018,7 @@ async function loadFeed(){
 
   if(error){ console.error(error); return; }
   allRows = rows;
+  totalMatching = count ?? rows.length;
   if(!rows.length){
     document.getElementById('feed-body').innerHTML = hasDateFilter
       ? `<div class="empty">No hay registros en ese rango de fechas.</div>`
@@ -999,15 +1027,37 @@ async function loadFeed(){
   } else {
     applyFilter();
   }
+  renderLoadMore();
   updateOnHoldStat(onHoldCount ?? 0);
   await loadTodayStats();
 }
 
-document.getElementById('filter-date-from').addEventListener('change', loadFeed);
-document.getElementById('filter-date-to').addEventListener('change', loadFeed);
+function renderLoadMore(){
+  const wrap = document.getElementById('load-more-wrap');
+  if(allRows.length < totalMatching){
+    const restantes = totalMatching - allRows.length;
+    wrap.innerHTML = `<button type="button" class="load-more-btn" id="btn-load-more">Cargar ${Math.min(PAGE_SIZE, restantes)} más (quedan ${restantes})</button>`;
+    document.getElementById('btn-load-more').addEventListener('click', async (e) => {
+      e.target.disabled = true;
+      e.target.textContent = 'Cargando...';
+      loadedCount += PAGE_SIZE;
+      await loadFeed();
+    });
+  } else {
+    wrap.innerHTML = '';
+  }
+}
+
+function resetPagination(){
+  loadedCount = PAGE_SIZE;
+}
+
+document.getElementById('filter-date-from').addEventListener('change', () => { resetPagination(); loadFeed(); });
+document.getElementById('filter-date-to').addEventListener('change', () => { resetPagination(); loadFeed(); });
 document.getElementById('btn-clear-dates').addEventListener('click', () => {
   document.getElementById('filter-date-from').value = '';
   document.getElementById('filter-date-to').value = '';
+  resetPagination();
   loadFeed();
 });
 
