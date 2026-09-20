@@ -18,6 +18,7 @@
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { trySendSms } from "../_shared/ringcentral.ts";
+import { MESSAGE_BUILDERS, ON_HOLD_EVENTS } from "../_shared/messages.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -51,39 +52,6 @@ function parseTaxiCallerPayload(body: any) {
 
   return { event, vehicleId, plate, vehicleMake, vehicleColor, phoneRaw, fareRaw, eventId };
 }
-
-// ------------------------------------------------------------
-// Textos de los mensajes, bilingües, tal como los tenías en TaxiCaller.
-//
-// El color viene de TaxiCaller ya bilingüe, ej: "Negro / Black".
-// Lo separamos para usar la palabra correcta en cada mitad del mensaje
-// en vez de mezclar los dos idiomas en la misma oración.
-// ------------------------------------------------------------
-function splitBilingualColor(colorRaw: string) {
-  const parts = colorRaw.split("/").map((p) => p.trim()).filter(Boolean);
-  if (parts.length >= 2) return { es: parts[0], en: parts[1] };
-  if (parts.length === 1) return { es: parts[0], en: parts[0] };
-  return { es: "", en: "" };
-}
-
-const MESSAGE_BUILDERS: Record<string, (d: ReturnType<typeof parseTaxiCallerPayload>) => string> = {
-  waiting_for_passenger: (d) => {
-    const color = splitBilingualColor(d.vehicleColor);
-    return `Su vehículo ${d.vehicleMake}, color ${color.es}, placa ${d.plate ?? ""}, le está esperando afuera.`;
-  },
-  canceled_by_company: () => `Su servicio ha sido cancelado.`,
-  delivered: (d) => {
-    const fare = d.fareRaw ?? "N/D";
-    return (
-      `Su servicio realizado por la unidad ${d.vehicleMake} fue completado con éxito! ` +
-      `El cobro fue de $${fare}.`
-    );
-  },
-};
-
-// Eventos que marcan a la unidad como "en espera" (dispara la deduplicación
-// por unidad). Cualquier otro evento reconocido libera la unidad.
-const ON_HOLD_EVENTS = new Set(["waiting_for_passenger"]);
 
 // ------------------------------------------------------------
 // 2) Manda el SMS probando cada código de país candidato, y guarda

@@ -409,6 +409,69 @@
     margin-top:14px; margin-bottom:4px;
   }
 
+  /* ---------- Chip de usuario ---------- */
+  .user-chip-wrap{ position:relative; }
+  .user-chip{
+    display:flex; align-items:center; gap:8px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:999px;
+    padding:5px 12px 5px 5px;
+    cursor:pointer;
+    font-family:inherit;
+    color:var(--text);
+    transition:all .15s ease;
+  }
+  .user-chip:hover{ border-color:var(--text-faint); background:var(--surface-hover); }
+  .user-chip-avatar{
+    width:24px; height:24px; border-radius:50%;
+    background:var(--accent); color:var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:700; flex:none;
+  }
+  .user-chip-label{ font-size:12.5px; font-weight:500; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .user-popover{
+    position:absolute; top:44px; left:0;
+    width:240px;
+    background:var(--surface-raised);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:14px 16px;
+    box-shadow:0 16px 32px -10px rgba(0,0,0,.55);
+    opacity:0; pointer-events:none; transform:translateY(-6px);
+    transition:opacity .15s ease, transform .15s ease;
+    z-index:25;
+  }
+  .user-popover.open{ opacity:1; pointer-events:auto; transform:translateY(0); }
+
+  /* ---------- Select (formulario de SMS de prueba) ---------- */
+  select{
+    width:100%;
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:10px 12px;
+    border-radius:8px;
+    font-size:14px;
+    font-family:inherit;
+    outline:none;
+  }
+  select:focus{ border-color:var(--accent); }
+
+  /* ---------- Historial de acciones ---------- */
+  .history-item{
+    padding:11px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .history-item:last-child{ border-bottom:none; }
+  .history-item-top{
+    display:flex; justify-content:space-between; align-items:baseline; gap:10px;
+  }
+  .history-action{ font-size:13.5px; font-weight:600; color:var(--text); }
+  .history-time{ font-size:11px; color:var(--text-faint); flex:none; }
+  .history-actor{ font-size:12px; color:var(--text-muted); margin-top:2px; }
+  .history-detail{ font-size:12px; color:var(--text-faint); margin-top:3px; }
+
   .feed{
     border:1px solid var(--border);
     border-radius:10px;
@@ -645,6 +708,27 @@
       </div>
     </div>
     <div class="topbar-actions" style="display:flex; align-items:center; gap:14px;">
+      <div class="user-chip-wrap">
+        <button type="button" class="user-chip" id="btn-user-chip" title="Tu perfil">
+          <span class="user-chip-avatar" id="user-chip-initial">?</span>
+          <span class="user-chip-label" id="user-chip-label">Usuario</span>
+        </button>
+        <div class="user-popover" id="user-popover">
+          <div class="msg-detail-row">
+            <span class="msg-detail-label">Nombre</span>
+            <span class="msg-detail-value" id="user-pop-name">—</span>
+          </div>
+          <div class="msg-detail-row">
+            <span class="msg-detail-label">Correo</span>
+            <span class="msg-detail-value" id="user-pop-email">—</span>
+          </div>
+          <div class="msg-detail-row" style="border-bottom:none;">
+            <span class="msg-detail-label">Rol</span>
+            <span class="msg-detail-value" id="user-pop-role">—</span>
+          </div>
+          <button type="button" class="btn btn-ghost btn-small" id="btn-logout-pop" style="width:100%; margin-top:12px;">Cerrar sesión</button>
+        </div>
+      </div>
       <label class="power-toggle" id="power-toggle" title="Estado del sistema">
         <span class="power-dot" id="power-dot"></span>
         <span class="power-label" id="power-label">Activo</span>
@@ -675,6 +759,13 @@
             <div class="theme-grid" id="theme-grid"></div>
           </div>
         </div>
+        <button class="icon-btn" id="btn-history" title="Historial de acciones">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/>
+            <path d="M3 3v5h5"/>
+            <path d="M12 7v5l3 3"/>
+          </svg>
+        </button>
         <button class="icon-btn" id="btn-settings" title="Configuración">
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8">
             <circle cx="12" cy="12" r="3"/>
@@ -814,6 +905,58 @@
     </form>
 
     <div class="field-set-status" id="settings-updated" style="margin-top:20px;"></div>
+
+    <div class="group-title" style="margin-top:30px;">SMS de prueba</div>
+    <p class="hint" style="margin:6px 0 16px;">
+      Mandá un mensaje de prueba con datos a elección, sin necesitar un evento real de TaxiCaller.
+    </p>
+    <form id="test-sms-form">
+      <div class="field">
+        <label for="test-event-type">Tipo de mensaje</label>
+        <select id="test-event-type">
+          <option value="waiting_for_passenger">En espera</option>
+          <option value="canceled_by_company">Cancelado</option>
+          <option value="delivered">Entregado</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="test-phone">Teléfono de prueba</label>
+        <input type="text" id="test-phone" placeholder="+1..." required />
+      </div>
+      <div class="field" id="test-vehicle-fields">
+        <label for="test-vehicle-make">Unidad</label>
+        <input type="text" id="test-vehicle-make" placeholder="Unidad de prueba" />
+      </div>
+      <div class="field" id="test-color-field">
+        <label for="test-vehicle-color">Color</label>
+        <input type="text" id="test-vehicle-color" placeholder="Negro" />
+      </div>
+      <div class="field" id="test-plate-field">
+        <label for="test-plate">Placa</label>
+        <input type="text" id="test-plate" placeholder="TEST123" />
+      </div>
+      <div class="field" id="test-fare-field" style="display:none;">
+        <label for="test-fare">Monto (solo para 'Entregado')</label>
+        <input type="text" id="test-fare" placeholder="7.00" />
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;">Enviar SMS de prueba</button>
+      <div class="field-set-status" id="test-sms-result" style="margin-top:10px;"></div>
+    </form>
+  </div>
+</div>
+
+<!-- ================= HISTORIAL DE ACCIONES ================= -->
+<div class="scrim" id="history-scrim"></div>
+<div class="drawer" id="history-drawer">
+  <div class="drawer-inner">
+    <div class="drawer-head">
+      <h2>Historial de acciones</h2>
+      <button class="icon-btn" id="btn-close-history">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p class="hint">Quién tocó qué, y cuándo — solo visible para administradores.</p>
+    <div id="history-list"></div>
   </div>
 </div>
 
@@ -1039,7 +1182,7 @@ function renderRows(rows){
   body.innerHTML = rows.map(r => `
     <div class="row data" data-id="${r.id}">
       <div class="cell-time mono">${fmtTime(r.sent_at)}</div>
-      <div>${r.vehicle_label ?? '—'}</div>
+      <div>${r.vehicle_label ?? '—'}${r.is_test ? ' <span class="type-badge other" style="margin-left:4px;">PRUEBA</span>' : ''}</div>
       <div class="cell-plate mono">${r.plate ?? '—'}</div>
       <div class="mono">${fmtPhone(r.phone)}</div>
       <div>${typeBadge(r.event_type)}</div>
@@ -1177,6 +1320,7 @@ async function loadTodayStats(){
     .from('messages_log')
     .select('status')
     .gte('sent_at', todayStart.toISOString())
+    .eq('is_test', false)
     .limit(2000);
   if(error){ console.error(error); return; }
   document.getElementById('stat-sent').textContent = data.filter(r => r.status === 'sent').length;
@@ -1372,13 +1516,27 @@ function subscribeRealtime(){
 
 // ---------------- Auth y roles ----------------
 let isAdmin = false;
+let currentUser = { name: '', email: '', role: 'viewer' };
 
 async function loadRole(){
   const { data: { session } } = await supabase.auth.getSession();
   if(!session) return;
-  const { data, error } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
+  const { data, error } = await supabase.from('profiles').select('role, display_name').eq('id', session.user.id).single();
   isAdmin = !error && data?.role === 'admin';
+  currentUser = {
+    name: data?.display_name || '',
+    email: session.user.email || '',
+    role: isAdmin ? 'admin' : 'viewer',
+  };
   applyRoleUI();
+  renderUserChip();
+}
+
+function renderUserChip(){
+  const label = currentUser.name || currentUser.email || 'Usuario';
+  const initial = (currentUser.name || currentUser.email || '?').trim().charAt(0).toUpperCase();
+  document.getElementById('user-chip-initial').textContent = initial;
+  document.getElementById('user-chip-label').textContent = label;
 }
 
 function applyRoleUI(){
@@ -1387,6 +1545,7 @@ function applyRoleUI(){
   document.getElementById('power-dot').style.display = isAdmin ? 'none' : 'inline-block';
   document.getElementById('power-checkbox').disabled = !isAdmin;
   document.getElementById('btn-export-excel').style.display = isAdmin ? 'inline-flex' : 'none';
+  document.getElementById('btn-history').style.display = isAdmin ? 'flex' : 'none';
 }
 
 async function loadPublicStatus(){
@@ -1423,6 +1582,26 @@ document.getElementById('btn-logout').addEventListener('click', async () => {
   location.reload();
 });
 
+document.getElementById('btn-logout-pop').addEventListener('click', async () => {
+  await supabase.auth.signOut();
+  location.reload();
+});
+
+// ---------------- Chip de usuario ----------------
+document.getElementById('btn-user-chip').addEventListener('click', (e) => {
+  e.stopPropagation();
+  document.getElementById('user-pop-name').textContent = currentUser.name || '(sin nombre cargado)';
+  document.getElementById('user-pop-email').textContent = currentUser.email || '—';
+  document.getElementById('user-pop-role').textContent = currentUser.role === 'admin' ? 'Administrador' : 'Solo lectura';
+  document.getElementById('user-popover').classList.toggle('open');
+});
+document.addEventListener('click', (e) => {
+  const wrap = document.querySelector('.user-chip-wrap');
+  if(wrap && !wrap.contains(e.target)){
+    document.getElementById('user-popover').classList.remove('open');
+  }
+});
+
 // ---------------- Settings drawer ----------------
 const drawer = document.getElementById('drawer');
 const scrim = document.getElementById('scrim');
@@ -1434,6 +1613,94 @@ document.getElementById('btn-settings').addEventListener('click', openDrawer);
 document.getElementById('btn-close-drawer').addEventListener('click', closeDrawer);
 document.getElementById('btn-cancel-drawer').addEventListener('click', closeDrawer);
 scrim.addEventListener('click', closeDrawer);
+
+// ---------------- SMS de prueba ----------------
+function updateTestFormFields(){
+  const type = document.getElementById('test-event-type').value;
+  document.getElementById('test-fare-field').style.display = type === 'delivered' ? 'block' : 'none';
+  const showVehicle = type !== 'canceled_by_company';
+  document.getElementById('test-vehicle-fields').style.display = showVehicle ? 'block' : 'none';
+  document.getElementById('test-color-field').style.display = showVehicle ? 'block' : 'none';
+  document.getElementById('test-plate-field').style.display = showVehicle ? 'block' : 'none';
+}
+document.getElementById('test-event-type').addEventListener('change', updateTestFormFields);
+updateTestFormFields();
+
+document.getElementById('test-sms-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const resultEl = document.getElementById('test-sms-result');
+  resultEl.textContent = 'Enviando...';
+
+  const payload = {
+    event_type: document.getElementById('test-event-type').value,
+    phone: document.getElementById('test-phone').value.trim(),
+    vehicle_make: document.getElementById('test-vehicle-make').value.trim(),
+    vehicle_color: document.getElementById('test-vehicle-color').value.trim(),
+    plate: document.getElementById('test-plate').value.trim(),
+    fare: document.getElementById('test-fare').value.trim(),
+  };
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/send-test-message`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const result = await res.json();
+    resultEl.textContent = result.ok
+      ? `Enviado correctamente a ${result.phone}.`
+      : `No se pudo enviar: ${result.reason ?? result.error ?? 'error desconocido'}`;
+    if(result.ok) showToast('SMS de prueba enviado.');
+    await loadFeed();
+  } catch (err) {
+    resultEl.textContent = 'Error de conexión al enviar la prueba.';
+  }
+});
+
+// ---------------- Historial de acciones ----------------
+const historyDrawer = document.getElementById('history-drawer');
+const historyScrim = document.getElementById('history-scrim');
+
+function openHistory(){
+  historyDrawer.classList.add('open');
+  historyScrim.classList.add('open');
+  loadHistory();
+}
+function closeHistory(){
+  historyDrawer.classList.remove('open');
+  historyScrim.classList.remove('open');
+}
+document.getElementById('btn-history').addEventListener('click', openHistory);
+document.getElementById('btn-close-history').addEventListener('click', closeHistory);
+historyScrim.addEventListener('click', closeHistory);
+
+async function loadHistory(){
+  const list = document.getElementById('history-list');
+  list.innerHTML = `<div class="empty">Cargando...</div>`;
+  const { data, error } = await supabase.rpc('admin_list_actions', { p_limit: 200 });
+  if(error){
+    list.innerHTML = `<div class="empty">No se pudo cargar el historial.</div>`;
+    return;
+  }
+  if(!data?.length){
+    list.innerHTML = `<div class="empty">Todavía no hay acciones registradas.</div>`;
+    return;
+  }
+  list.innerHTML = data.map(a => `
+    <div class="history-item">
+      <div class="history-item-top">
+        <span class="history-action">${a.action}</span>
+        <span class="history-time mono">${fmtFullDateTime(a.created_at)}</span>
+      </div>
+      <div class="history-actor">${a.actor_email ?? 'Desconocido'}</div>
+      ${a.detail ? `<div class="history-detail">${a.detail}</div>` : ''}
+    </div>
+  `).join('');
+}
 
 async function loadSettingsStatus(){
   const { data, error } = await supabase.rpc('admin_get_settings_status');

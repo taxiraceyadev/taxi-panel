@@ -64,6 +64,7 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: false, reason: "token inválido" }, 401);
   }
   const userId = userData.user.id;
+  const userEmail = userData.user.email ?? null;
 
   const { data: profile, error: profileError } = await supabaseAdmin
     .from("profiles")
@@ -136,6 +137,13 @@ Deno.serve(async (req) => {
       return jsonResponse({ ok: false, reason: "no se pudo guardar el resultado del reintento" }, 500);
     }
 
+    await supabaseAdmin.from("admin_actions").insert({
+      actor_id: userId,
+      actor_email: userEmail,
+      action: "Reintentó un mensaje",
+      detail: `${message.vehicle_label ?? ''} (${message.plate ?? '—'}) → ${result.ok ? 'enviado' : 'falló'}`,
+    });
+
     return jsonResponse({ ok: result.ok, phone: result.phone, error: result.error });
   } catch (err) {
     await supabaseAdmin
@@ -147,6 +155,12 @@ Deno.serve(async (req) => {
         retried_by: userId,
       })
       .eq("id", messageId);
+    await supabaseAdmin.from("admin_actions").insert({
+      actor_id: userId,
+      actor_email: userEmail,
+      action: "Reintentó un mensaje",
+      detail: `${message.vehicle_label ?? ''} (${message.plate ?? '—'}) → falló: ${String(err)}`,
+    });
     return jsonResponse({ ok: false, reason: String(err) }, 500);
   }
 });
