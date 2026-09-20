@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Panel de notificaciones</title>
-<link rel="icon" href="data:," />
+<link rel="icon" type="image/png" href="favicon.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
@@ -323,6 +323,10 @@
   }
   [data-theme="light"] .date-filter-bar input[type=date]{ color-scheme:light; }
   .btn-small{ padding:6px 11px; font-size:12px; font-weight:500; }
+  .toolbar-btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    min-width:132px;
+  }
   .date-filter-note{ color:var(--text-faint); font-size:11.5px; }
 
   #load-more-wrap{
@@ -710,8 +714,11 @@
       <input type="date" id="filter-date-from" />
       <label for="filter-date-to">Hasta</label>
       <input type="date" id="filter-date-to" />
-      <button type="button" id="btn-clear-dates" class="btn btn-ghost btn-small">Limpiar fechas</button>
-      <button type="button" id="btn-export-excel" class="btn btn-ghost btn-small">⬇ Exportar Excel</button>
+      <button type="button" id="btn-clear-dates" class="btn btn-ghost btn-small toolbar-btn">Limpiar fechas</button>
+      <button type="button" id="btn-export-excel" class="btn btn-ghost btn-small toolbar-btn">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#1D9A6C" stroke-width="2" style="flex:none;"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+        Exportar Excel
+      </button>
       <span class="date-filter-note">(las fechas son en huso de Atlanta)</span>
     </div>
     <div class="feed">
@@ -1255,6 +1262,7 @@ document.getElementById('btn-export-excel').addEventListener('click', exportExce
 
 async function exportExcel(){
   const btn = document.getElementById('btn-export-excel');
+  const originalHTML = btn.innerHTML;
   btn.disabled = true;
   btn.textContent = 'Generando...';
 
@@ -1268,7 +1276,7 @@ async function exportExcel(){
 
   const { data: rows, error } = await query;
   btn.disabled = false;
-  btn.textContent = '⬇ Exportar Excel';
+  btn.innerHTML = originalHTML;
 
   if(error || !rows){ showToast('No se pudo generar el archivo.'); return; }
   if(!rows.length){ showToast('No hay datos para exportar en ese rango.'); return; }
